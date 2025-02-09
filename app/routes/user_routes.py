@@ -1,18 +1,15 @@
 import bcrypt
-from flask import Blueprint , request, jsonify
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token
-from app.models import User,db
-
-
-auth_bp = Blueprint('auth', __name__)
-
-
-
-
+from app.models.user import User
 from flask import request, jsonify
+from config import db
 from sqlalchemy.exc import IntegrityError
 
-@auth_bp.route('/register', methods=['POST'])
+auth_bp = Blueprint("auth", __name__)
+
+
+@auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json()
     username = data.get("username")
@@ -22,15 +19,15 @@ def register():
 
     # Vérification des champs requis
     if not username or not email or not password or not confirm_password:
-        return jsonify({"message": 'Missing data'}), 400
+        return jsonify({"message": "Missing data"}), 400
 
     # Vérification de la correspondance des mots de passe
     if password != confirm_password:
-        return jsonify({"message": 'Passwords do not match'}), 400
+        return jsonify({"message": "Passwords do not match"}), 400
 
     # Hachage du mot de passe
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    hashed_password = hashed_password.decode('utf8')
+    hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    hashed_password = hashed_password.decode("utf8")
 
     # Création de l'utilisateur
     user = User(username=username, email=email, password=hashed_password)
@@ -39,38 +36,41 @@ def register():
         # Tentative d'ajout de l'utilisateur dans la base de données
         db.session.add(user)
         db.session.commit()
-        return jsonify({"message": 'User registered successfully'}), 201
+        return jsonify({"message": "User registered successfully"}), 201
     except IntegrityError as e:
         # En cas de violation des contraintes d'intégrité (par exemple, e-mail ou nom d'utilisateur déjà pris)
         db.session.rollback()  # Annule la transaction pour éviter d'avoir un état corrompu
-        return jsonify({"message": 'Username or email already exists'}), 409
+        return jsonify({"message": "Username or email already exists"}), 409
     except Exception as e:
         # En cas d'autres erreurs
         db.session.rollback()  # Annule la transaction pour éviter d'avoir un état corrompu
         return jsonify({"message": f"An error occurred: {str(e)}"}), 500
 
 
-@auth_bp.route('/login',methods=['POST'])
+@auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
     if not username or not password:
-        return jsonify({"message":'Missing data'}), 400
+        return jsonify({"message": "Missing data"}), 400
     user = User.query.filter_by(username=username).first()
     if user:
-        if bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+        if bcrypt.checkpw(password.encode("utf-8"), user.password.encode("utf-8")):
             access_token = create_access_token(identity=user.username)
-            return jsonify(access_token=access_token),200
+            return jsonify(access_token=access_token), 200
         else:
-            return jsonify({"message":'Invalid credentials'}), 401
+            return jsonify({"message": "Invalid credentials"}), 401
     else:
-        return jsonify({"message":'User does not exist'}), 401
+        return jsonify({"message": "User does not exist"}), 401
 
-@auth_bp.route('/users',methods=['GET'])
+
+@auth_bp.route("/users", methods=["GET"])
 def get_users():
     users = User.query.all()
+    print(users)
     return jsonify([row2dict(user) for user in users])
+
 
 def row2dict(row):
     d = {}
