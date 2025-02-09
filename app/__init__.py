@@ -36,3 +36,4 @@ def create_app():
     app.register_blueprint(event_bp, url_prefix="/event")
     app.register_blueprint(sport_bp, url_prefix="/sport")
     return app
+
