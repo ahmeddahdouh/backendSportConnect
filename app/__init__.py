@@ -5,6 +5,7 @@ from flask_jwt_extended import JWTManager
 from flask_sqlalchemy import SQLAlchemy
 from app.routes.app_routes import main_bp
 from app.routes.user_routes import auth_bp
+from app.routes.event_routes import event_bp
 from config import Config, db
 
 
@@ -26,8 +27,8 @@ def create_app():
     app.config.from_object(Config)
     db.init_app(app)
     with app.app_context():
-        db.drop_all()
         db.create_all()
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(main_bp, url_prefix="")
+    app.register_blueprint(event_bp, url_prefix="/event")
     return app
