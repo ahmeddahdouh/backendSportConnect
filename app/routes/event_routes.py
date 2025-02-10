@@ -50,6 +50,30 @@ def get_events():
     events = Event.query.all()
     return jsonify([row2dict(event) for event in events])
 
+@event_bp.route("/<int:event_id>", methods=['GET'])
+def get_event_by_id(event_id):
+    event = Event.query.get(event_id)
+
+    if not event:
+        return jsonify({"error": "Événement non trouvé"}), 404
+
+    return jsonify({
+        "id": event.id,
+        "id_gestionnaire": event.id_gestionnaire,
+        "id_sport": event.id_sport,
+        "event_ville": event.event_ville,
+        "event_date": event.event_date,
+        "event_max_utilisateur": event.event_max_utilisateur,
+        "event_Items": event.event_Items,
+        "is_private": event.is_private,
+        "is_team_vs_team": event.is_team_vs_team,
+        "event_age_min": event.event_age_min,
+        "event_age_max": event.event_age_max,
+        "nombre_utilisateur_min": event.nombre_utilisateur_min
+    }), 200
+
+
+
 
 def row2dict(row):
     d = {}
