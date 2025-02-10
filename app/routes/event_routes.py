@@ -75,7 +75,7 @@ def get_event_by_id(event_id):
 
 
 @event_bp.route("/<int:event_id>", methods=['DELETE'])
-def get_event_by_id(event_id):
+def delete_event_by_id(event_id):
     event = Event.query.get(event_id)
 
     if not event:
