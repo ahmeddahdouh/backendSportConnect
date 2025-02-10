@@ -110,3 +110,9 @@ def delete_event_by_id(event_id):
     db.session.commit()
     return jsonify({"message": f"Événement {event_id} supprimé avec succès"}), 200
 
+
+@event_bp.route("/",methods=['GET'])
+def get_events():
+    events = Event.query.all()
+    return jsonify([row2dict(event) for event in events])
+
