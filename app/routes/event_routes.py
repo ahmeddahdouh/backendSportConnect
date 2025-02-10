@@ -1,6 +1,6 @@
-from threading import Event
-
-from flask import Blueprint
+from app.models.events import Event
+from flask import Blueprint, request, jsonify
+from config import db
 
 event_bp = Blueprint('event', __name__)
 
@@ -41,9 +41,18 @@ def add_event():
     db.session.commit()
     db.session.flush()
 
+    return jsonify({"message": "Événement ajouté avec succès", "event_id": event.id}), 201
 
 
 
 @event_bp.route("/",methods=['GET'])
-def  get_event():
-    return ("hello events ")
+def get_events():
+    events = Event.query.all()
+    return jsonify([row2dict(event) for event in events])
+
+
+def row2dict(row):
+    d = {}
+    for column in row.__table__.columns:
+        d[column.name] = str(getattr(row, column.name))
+    return d
