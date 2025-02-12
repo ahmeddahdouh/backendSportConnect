@@ -7,7 +7,7 @@ from app.routes.app_routes import main_bp
 from app.routes.user_routes import auth_bp
 from app.routes.event_routes import event_bp
 from config import Config, db
-
+from flask_cors import CORS
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -18,6 +18,8 @@ DB_NAME = os.getenv("DB_NAME")
 
 def create_app():
     app = Flask(__name__)
+    #application des cors
+    CORS(app)
 
     JWTManager(app)
     CORS(app, resources={r"/auth/*": {"origins": "http://localhost:3000"}})
