@@ -8,6 +8,7 @@ from . import row2dict
 
 event_bp = Blueprint("event", __name__)
 
+event_bp = Blueprint('event', __name__)
 
 @event_bp.route("/", methods=["POST"])
 def add_event():
@@ -139,6 +140,16 @@ def get_event_by_id(event_id):
     }), 200
 
 
+
+@event_bp.route("/<int:event_id>", methods=['DELETE'])
+def delete_event_by_id(event_id):
+    event = Event.query.get(event_id)
+
+    if not event:
+        return jsonify({"error": "Événement non trouvé"}), 404
+    db.session.delete(event)
+    db.session.commit()
+    return jsonify({"message": f"Événement {event_id} supprimé avec succès"}), 200
 
 
 def row2dict(row):
