@@ -11,6 +11,7 @@ def add_event():
     data = request.get_json()
 
     id_gestionnaire = data['id_gestionnaire']
+    event_name = data['event_name']
     id_sport = data['id_sport']
     event_ville = data['event_ville']
     event_date = data['event_date']
@@ -25,6 +26,7 @@ def add_event():
     # Création de l'objet Event
     event = Event(
         id_gestionnaire=id_gestionnaire,
+        event_name=event_name,
         id_sport=id_sport,
         event_ville=event_ville,
         event_date=event_date,
