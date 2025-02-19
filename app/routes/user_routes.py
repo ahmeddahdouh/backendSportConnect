@@ -1,10 +1,11 @@
-import bcrypt
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import JWTManager, create_access_token
+from flask import Blueprint, request, jsonify, abort
+from flask_jwt_extended import create_access_token
 from app.models.user import User
-from flask import request, jsonify
 from config import db
 from sqlalchemy.exc import IntegrityError
+from flask import abort, make_response, jsonify
+import bcrypt
+
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -70,6 +71,15 @@ def get_users():
     users = User.query.all()
     print(users)
     return jsonify([row2dict(user) for user in users])
+
+
+@auth_bp.route("/users/<int:user_id>", methods=["GET"])
+def get_user_by_id(user_id: int):
+    user = User.query.get(user_id)
+    if not user:
+        abort(make_response(jsonify(message="Id organisateur n'existe pas"), 400))
+    else:
+        return jsonify(row2dict(user))
 
 
 def row2dict(row):
