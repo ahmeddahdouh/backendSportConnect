@@ -18,7 +18,7 @@ DB_NAME = os.getenv("DB_NAME")
 
 def create_app():
     app = Flask(__name__)
-    #application des cors
+    # application des cors
     CORS(app)
 
     JWTManager(app)
