@@ -1,7 +1,8 @@
-from app.models.events import Event
+from app.models.event import Event
 from flask import Blueprint, request, jsonify
 from config import db
 from .user_routes import get_user_by_id
+from . import row2dict
 
 event_bp = Blueprint("event", __name__)
 
@@ -64,7 +65,6 @@ def get_events():
     events = Event.query.all()
     events_to_return = [row2dict(event) for event in events]
     for event in events_to_return:
-
         event["username"] = get_user_by_id(int(event['id_gestionnaire'])).get_json()['username']
     return jsonify(events_to_return)
 
@@ -108,9 +108,3 @@ def delete_event_by_id(event_id):
     db.session.commit()
     return jsonify({"message": f"Événement {event_id} supprimé avec succès"}), 200
 
-
-def row2dict(row):
-    d = {}
-    for column in row.__table__.columns:
-        d[column.name] = str(getattr(row, column.name))
-    return d
