@@ -68,6 +68,7 @@ def get_events():
     events = Event.query.all()
     events_to_return = [row2dict(event) for event in events]
     for event in events_to_return:
+
         event["username"] = get_user_by_id(int(event['id_gestionnaire'])).get_json()['username']
     return jsonify(events_to_return)
 
