@@ -6,6 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from app.routes.app_routes import main_bp
 from app.routes.user_routes import auth_bp
 from app.routes.event_routes import event_bp
+from app.routes.sport_routes import sport_bp
 from config import Config, db
 from flask_cors import CORS
 
@@ -33,4 +34,5 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(main_bp, url_prefix="")
     app.register_blueprint(event_bp, url_prefix="/event")
+    app.register_blueprint(sport_bp, url_prefix="/sport")
     return app

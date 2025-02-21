@@ -5,7 +5,7 @@ from config import db
 from sqlalchemy.exc import IntegrityError
 from flask import abort, make_response, jsonify
 import bcrypt
-
+from . import row2dict
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -58,7 +58,10 @@ def login():
     user = User.query.filter_by(username=username).first()
     if user:
         if bcrypt.checkpw(password.encode("utf-8"), user.password.encode("utf-8")):
-            access_token = create_access_token(identity=user.username)
+            access_token = create_access_token(identity=
+                                               {'username': user.username,
+                                                'id': user.id}
+                                               )
             return jsonify(access_token=access_token), 200
         else:
             return jsonify({"message": "Invalid credentials"}), 401
@@ -80,10 +83,3 @@ def get_user_by_id(user_id: int):
         abort(make_response(jsonify(message="Id organisateur n'existe pas"), 400))
     else:
         return jsonify(row2dict(user))
-
-
-def row2dict(row):
-    d = {}
-    for column in row.__table__.columns:
-        d[column.name] = str(getattr(row, column.name))
-    return d
