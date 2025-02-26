@@ -1,5 +1,6 @@
 from app.models.event import Event
 from app.models.user import User
+from app.associations.event_users import event_users
 from flask import Blueprint, request, jsonify
 from config import db
 from .user_routes import get_user_by_id
@@ -87,6 +88,38 @@ def get_events():
 
     return jsonify(events_to_return)
 
+@event_bp.route("/participate", methods=["POST"])
+def participate_event():
+    from flask import request
+
+    data = request.get_json()
+    user_id = data.get("user_id")
+    event_id = data.get("event_id")
+
+    if not user_id or not event_id:
+        return jsonify({"error": "user_id et event_id sont requis"}), 400
+
+    user = User.query.get(user_id)
+    event = Event.query.get(event_id)
+
+    if not user or not event:
+        return jsonify({"error": "Utilisateur ou événement non trouvé"}), 404
+
+    # Vérifier si l'utilisateur est déjà inscrit à cet événement
+    existing_entry = db.session.execute(
+        db.select(event_users).where(
+            (event_users.c.user_id == user_id) & (event_users.c.event_id == event_id)
+        )
+    ).first()
+
+    if existing_entry:
+        return jsonify({"message": "L'utilisateur est déjà inscrit à cet événement"}), 409
+
+    # Insérer l'utilisateur dans l'événement
+    db.session.execute(event_users.insert().values(user_id=user_id, event_id=event_id))
+    db.session.commit()
+
+    return jsonify({"message": "Utilisateur ajouté à l'événement avec succès"}), 201
 
 
 @event_bp.route("/<int:event_id>", methods=["GET"])
