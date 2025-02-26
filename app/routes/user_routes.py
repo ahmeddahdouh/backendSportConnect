@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, abort
 from flask_jwt_extended import create_access_token
 from app.models.user import User
+from app.models.event import Event
+from app.associations.event_users import event_users
 from config import db
 from sqlalchemy.exc import IntegrityError
 from flask import abort, make_response, jsonify
@@ -79,7 +81,34 @@ def get_users():
 @auth_bp.route("/users/<int:user_id>", methods=["GET"])
 def get_user_by_id(user_id: int):
     user = User.query.get(user_id)
+
     if not user:
         abort(make_response(jsonify(message="Id organisateur n'existe pas"), 400))
-    else:
-        return jsonify(row2dict(user))
+
+    # Récupérer tous les événements auxquels l'utilisateur participe
+    events = Event.query.join(event_users).filter(event_users.c.user_id == user_id).all()
+
+    # Construire la liste des événements
+    events_list = [
+        {
+            "id": event.id,
+            "event_name": event.event_name,
+            "event_description": event.event_description,
+            "event_ville": event.event_ville,
+            "event_date": event.event_date,
+            "event_max_utilisateur": event.event_max_utilisateur,
+            "is_private": event.is_private,
+            "is_team_vs_team": event.is_team_vs_team,
+            "event_age_min": event.event_age_min,
+            "event_age_max": event.event_age_max,
+            "nombre_utilisateur_min": event.nombre_utilisateur_min,
+        }
+        for event in events
+    ]
+
+    # Ajouter la liste des événements à la réponse utilisateur
+    user_data = row2dict(user)
+    user_data["events"] = events_list
+
+    return jsonify(user_data)
+

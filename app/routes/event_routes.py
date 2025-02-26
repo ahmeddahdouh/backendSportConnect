@@ -1,4 +1,5 @@
 from app.models.event import Event
+from app.models.user import User
 from flask import Blueprint, request, jsonify
 from config import db
 from .user_routes import get_user_by_id
@@ -14,8 +15,10 @@ def add_event():
     data = request.get_json()
 
     id_gestionnaire = data["id_gestionnaire"]
-
     user = get_user_by_id(id_gestionnaire)
+
+    if not user:
+        return jsonify({"error": "User does not exist"}), 400
 
     event_name = data["event_name"]
     id_sport = data["id_sport"]
@@ -30,8 +33,8 @@ def add_event():
     nombre_utilisateur_min = data["nombre_utilisateur_min"]
     event_description = data["event_description"]
 
-    if not user:
-        return jsonify({"error": "User does not exist"}), 400
+    # Liste des utilisateurs membres (facultatif)
+    members = data.get("members", [])  # Liste d'IDs d'utilisateurs
 
     # Création de l'objet Event
     event = Event(
@@ -51,8 +54,14 @@ def add_event():
     )
 
     db.session.add(event)
+    db.session.flush()  # On génère l'ID de l'événement avant d'ajouter les relations
+
+    # Ajouter les membres à l'événement
+    if members:
+        valid_users = User.query.filter(User.id.in_(members)).all()
+        event.users.extend(valid_users)
+
     db.session.commit()
-    db.session.flush()
 
     return (
         jsonify({"message": "Événement ajouté avec succès", "event_id": event.id}),
@@ -64,9 +73,20 @@ def add_event():
 def get_events():
     events = Event.query.all()
     events_to_return = [row2dict(event) for event in events]
+
     for event in events_to_return:
-        event["username"] = get_user_by_id(int(event['id_gestionnaire'])).get_json()['username']
+        # Ajout du username du gestionnaire
+        event["username"] = get_user_by_id(int(event["id_gestionnaire"])).get_json()["username"]
+
+        # Récupération des utilisateurs participants à l'événement
+        event_obj = Event.query.get(event["id"])  # Récupération de l'objet Event
+        event["members"] = [
+            {"id": user.id, "firstname": user.firstname, "familyname": user.familyname}
+            for user in event_obj.users
+        ]
+
     return jsonify(events_to_return)
+
 
 
 @event_bp.route("/<int:event_id>", methods=["GET"])
@@ -75,6 +95,12 @@ def get_event_by_id(event_id):
 
     if not event:
         return jsonify({"error": "Événement non trouvé"}), 404
+
+    # Récupération des utilisateurs participants à l'événement
+    members = [
+        {"id": user.id, "firstname": user.firstname, "familyname": user.familyname}
+        for user in event.users
+    ]
 
     return (
         jsonify(
@@ -92,6 +118,7 @@ def get_event_by_id(event_id):
                 "event_age_min": event.event_age_min,
                 "event_age_max": event.event_age_max,
                 "nombre_utilisateur_min": event.nombre_utilisateur_min,
+                "members": members,  # Ajout de la liste des utilisateurs participants
             }
         ),
         200,
@@ -107,4 +134,5 @@ def delete_event_by_id(event_id):
     db.session.delete(event)
     db.session.commit()
     return jsonify({"message": f"Événement {event_id} supprimé avec succès"}), 200
+
 
