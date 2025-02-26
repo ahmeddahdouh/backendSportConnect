@@ -68,8 +68,16 @@ def get_events():
     events = Event.query.all()
     events_to_return = [row2dict(event) for event in events]
     for event in events_to_return:
+        # Ajout du username du gestionnaire
+        event["username"] = get_user_by_id(int(event["id_gestionnaire"])).get_json()["username"]
 
-        event["username"] = get_user_by_id(int(event['id_gestionnaire'])).get_json()['username']
+        # Récupération des utilisateurs participants à l'événement
+        event_obj = Event.query.get(event["id"])  # Récupération de l'objet Event
+        event["members"] = [
+            {"id": user.id, "firstname": user.firstname, "familyname": user.familyname}
+            for user in event_obj.users
+        ]
+
     return jsonify(events_to_return)
 
 
@@ -79,6 +87,12 @@ def get_event_by_id(event_id):
 
     if not event:
         return jsonify({"error": "Événement non trouvé"}), 404
+
+    # Récupération des utilisateurs participants à l'événement
+    members = [
+        {"id": user.id, "firstname": user.firstname, "familyname": user.familyname}
+        for user in event.users
+    ]
 
     return (
         jsonify(
@@ -96,6 +110,7 @@ def get_event_by_id(event_id):
                 "event_age_min": event.event_age_min,
                 "event_age_max": event.event_age_max,
                 "nombre_utilisateur_min": event.nombre_utilisateur_min,
+                "members": members,  # Ajout de la liste des utilisateurs participants
             }
         ),
         200,
