@@ -30,6 +30,7 @@ def create_app():
     app.config.from_object(Config)
     db.init_app(app)
     with app.app_context():
+        db.drop_all()
         db.create_all()
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(main_bp, url_prefix="")
