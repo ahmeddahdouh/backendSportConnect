@@ -168,54 +168,7 @@ def delete_event_by_id(event_id):
     db.session.commit()
     return jsonify({"message": f"Événement {event_id} supprimé avec succès"}), 200
 
-@event_bp.route("/booking", methods=["GET"])
-def get_events():
-    events = Event.query.all()
-    events_to_return = [row2dict(event) for event in events]
-    for event in events_to_return:
-
-        event["username"] = get_user_by_id(int(event['id_gestionnaire'])).get_json()['username']
-    return jsonify(events_to_return)
 
 
-@event_bp.route("/<int:event_id>", methods=["GET"])
-def get_event_by_id(event_id):
-    event = Event.query.get(event_id)
-
-    if not event:
-        return jsonify({"error": "Événement non trouvé"}), 404
-
-    return (
-        jsonify(
-            {
-                "id": event.id,
-                "id_gestionnaire": event.id_gestionnaire,
-                "id_sport": event.id_sport,
-                "event_description": event.event_description,
-                "event_ville": event.event_ville,
-                "event_date": event.event_date,
-                "event_max_utilisateur": event.event_max_utilisateur,
-                "event_Items": event.event_Items,
-                "is_private": event.is_private,
-                "is_team_vs_team": event.is_team_vs_team,
-                "event_age_min": event.event_age_min,
-                "event_age_max": event.event_age_max,
-                "nombre_utilisateur_min": event.nombre_utilisateur_min,
-            }
-        ),
-        200,
-    )
-
-
-
-@event_bp.route("/<int:event_id>", methods=['DELETE'])
-def delete_event_by_id(event_id):
-    event = Event.query.get(event_id)
-
-    if not event:
-        return jsonify({"error": "Événement non trouvé"}), 404
-    db.session.delete(event)
-    db.session.commit()
-    return jsonify({"message": f"Événement {event_id} supprimé avec succès"}), 200
 
 
