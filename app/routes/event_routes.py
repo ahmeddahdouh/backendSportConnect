@@ -11,7 +11,6 @@ event_bp = Blueprint('event', __name__)
 @event_bp.route("/", methods=["POST"])
 def add_event():
     from flask import request
-
     data = request.get_json()
 
     id_gestionnaire = data["id_gestionnaire"]
