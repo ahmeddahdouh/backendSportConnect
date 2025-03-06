@@ -1,6 +1,6 @@
 from sqlalchemy.dialects.postgresql import JSONB
 from config import db
-from app.associations.event_users import event_users  # Import correct depuis associations
+from app.associations.event_users import Event_users
 
 class Event(db.Model):
     __tablename__ = "events"
@@ -18,4 +18,4 @@ class Event(db.Model):
     event_age_min = db.Column(db.Integer, nullable=False)
     event_age_max = db.Column(db.Integer, nullable=False)
     nombre_utilisateur_min = db.Column(db.Integer, nullable=False)
-    users = db.relationship('User', secondary=event_users, back_populates='events')
+    users = db.relationship('User', secondary="event_users", back_populates='events')

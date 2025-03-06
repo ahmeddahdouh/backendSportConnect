@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 from app.models import User, Event
+from app.associations.event_users import Event_users
 from config import db
 
 # this is the Alembic Config object, which provides

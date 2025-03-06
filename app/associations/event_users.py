@@ -1,7 +1,7 @@
 from config import db
 
-event_users = db.Table(
-    'event_users',
-    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
-    db.Column('event_id', db.Integer, db.ForeignKey('events.id'), primary_key=True)
-)
+class Event_users(db.Model):
+    __tablename__ = 'event_users'
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), primary_key=True)
+

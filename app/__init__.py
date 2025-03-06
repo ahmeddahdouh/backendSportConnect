@@ -29,8 +29,6 @@ def create_app():
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
     app.config.from_object(Config)
     db.init_app(app)
-    with app.app_context():
-        db.create_all()
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(main_bp, url_prefix="")
     app.register_blueprint(event_bp, url_prefix="/event")

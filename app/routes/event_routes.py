@@ -1,8 +1,8 @@
 from app.models.event import Event
 from app.models.user import User
-from app.associations.event_users import event_users
 from flask import Blueprint, request, jsonify
 from config import db
+from app.associations.event_users import Event_users
 from .user_routes import get_user_by_id
 from . import row2dict
 
@@ -55,11 +55,6 @@ def add_event():
     db.session.add(event)
     db.session.flush()  # On génère l'ID de l'événement avant d'ajouter les relations
 
-    # Ajouter les membres à l'événement
-    if members:
-        valid_users = User.query.filter(User.id.in_(members)).all()
-        event.users.extend(valid_users)
-
     db.session.commit()
     db.session.flush()
 
@@ -69,28 +64,8 @@ def add_event():
     )
 
 
-@event_bp.route("/booking", methods=["GET"])
-def get_events():
-    events = Event.query.all()
-    events_to_return = [row2dict(event) for event in events]
-
-    for event in events_to_return:
-        # Ajout du username du gestionnaire
-        event["username"] = get_user_by_id(int(event["id_gestionnaire"])).get_json()["username"]
-
-        # Récupération des utilisateurs participants à l'événement
-        event_obj = Event.query.get(event["id"])  # Récupération de l'objet Event
-        event["members"] = [
-            {"id": user.id, "firstname": user.firstname, "familyname": user.familyname}
-            for user in event_obj.users
-        ]
-
-    return jsonify(events_to_return)
-
 @event_bp.route("/participate", methods=["POST"])
 def participate_event():
-    from flask import request
-
     data = request.get_json()
     user_id = data.get("user_id")
     event_id = data.get("event_id")
@@ -105,18 +80,17 @@ def participate_event():
         return jsonify({"error": "Utilisateur ou événement non trouvé"}), 404
 
     # Vérifier si l'utilisateur est déjà inscrit à cet événement
-    existing_entry = db.session.execute(
-        db.select(event_users).where(
-            (event_users.c.user_id == user_id) & (event_users.c.event_id == event_id)
-        )
-    ).first()
+    existing_entry = Event_users.query.get((user_id,event_id))
+
 
     if existing_entry:
         return jsonify({"message": "L'utilisateur est déjà inscrit à cet événement"}), 409
+    event_user_db = Event_users(user_id=user_id, event_id=event_id)
 
     # Insérer l'utilisateur dans l'événement
     db.session.execute(event_users.insert().values(user_id=user_id, event_id=event_id))
     db.session.commit()
+    db.session.flush()
 
     return jsonify({"message": "Utilisateur ajouté à l'événement avec succès"}), 201
 
@@ -166,6 +140,19 @@ def delete_event_by_id(event_id):
     db.session.delete(event)
     db.session.commit()
     return jsonify({"message": f"Événement {event_id} supprimé avec succès"}), 200
+
+@event_bp.route("/booking", methods=["GET"])
+def get_events():
+    events = Event.query.all()
+    for event in events:
+        members = [
+            {"id": user.id, "firstname": user.firstname, "familyname": user.familyname}
+            for user in event["users"]
+        ]
+        event["username"] = get_user_by_id(int(event['id_gestionnaire'])).get_json()['username']
+
+    return jsonify(events_to_return)
+
 
 
 
