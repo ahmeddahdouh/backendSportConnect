@@ -8,14 +8,15 @@ from sqlalchemy.exc import IntegrityError
 from flask import abort, make_response, jsonify
 import bcrypt
 from . import row2dict
+from flasgger import swag_from
+from flasgger import Swagger, SwaggerView, Schema, fields
 
 auth_bp = Blueprint("auth", __name__)
 
-
 @auth_bp.route("/register", methods=["POST"])
+@swag_from('add_user_docs.yaml')
 def register():
     data = request.get_json()
-
     # Récupération des champs requis
     username = data.get("username")
     email = data.get("email")
@@ -71,11 +72,6 @@ def register():
         return jsonify({"message": f"An error occurred: {str(e)}"}), 500
 
 
-from flask import request, jsonify
-from sqlalchemy.exc import IntegrityError
-import bcrypt
-from app.models import User
-from config import db
 
 
 @auth_bp.route("/users/<int:user_id>", methods=["PUT"])
@@ -184,4 +180,3 @@ def get_user_by_id(user_id: int):
     user_data["events"] = events_list
 
     return jsonify(user_data)
-

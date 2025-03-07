@@ -8,6 +8,7 @@ from app.routes.user_routes import auth_bp
 from app.routes.event_routes import event_bp
 from app.routes.sport_routes import sport_bp
 from config import Config, db
+from flasgger import Swagger
 from flask_cors import CORS
 
 DB_USER = os.getenv("DB_USER")
@@ -21,7 +22,8 @@ def create_app():
     app = Flask(__name__)
     # application des cors
     CORS(app)
-
+    #declaration de
+    swagger = Swagger(app)
     JWTManager(app)
     CORS(app, resources={r"/auth/*": {"origins": "http://localhost:3000"}})
     app.config["SQLALCHEMY_DATABASE_URI"] = Config.DATABASE_URL
