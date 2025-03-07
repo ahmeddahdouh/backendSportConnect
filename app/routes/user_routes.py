@@ -14,7 +14,7 @@ from flasgger import Swagger, SwaggerView, Schema, fields
 auth_bp = Blueprint("auth", __name__)
 
 @auth_bp.route("/register", methods=["POST"])
-@swag_from('add_user_docs.yaml')
+@swag_from('../../static/docs/add_user_docs.yaml')
 def register():
     data = request.get_json()
     # Récupération des champs requis
