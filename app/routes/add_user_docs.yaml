@@ -1,0 +1,82 @@
+---
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - confirmPassword
+        - firstname
+        - familyname
+        - city
+        - phone
+        - age
+      properties:
+        username:
+          type: string
+          example: "new_user"
+        email:
+          type: string
+          example: "new_user@example.com"
+        password:
+          type: string
+          format: password
+          example: "securepassword123"
+        confirmPassword:
+          type: string
+          format: password
+          example: "securepassword123"
+        firstname:
+          type: string
+          example: "John"
+        familyname:
+          type: string
+          example: "Doe"
+        city:
+          type: string
+          example: "Paris"
+        phone:
+          type: string
+          example: "+33123456789"
+        age:
+          type: integer
+          example: 25
+
+responses:
+  '201':
+    description: User created successfully.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            username:
+              type: string
+              example: "new_user"
+            email:
+              type: string
+              example: "new_user@example.com"
+            firstname:
+              type: string
+              example: "John"
+            familyname:
+              type: string
+              example: "Doe"
+            city:
+              type: string
+              example: "Paris"
+            phone:
+              type: string
+              example: "+33123456789"
+            age:
+              type: integer
+              example: 25
+  '400':
+    description: Error with the provided data.
