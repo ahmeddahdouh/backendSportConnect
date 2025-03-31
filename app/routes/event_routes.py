@@ -80,10 +80,7 @@ def participate_event():
     if not user or not event:
         return jsonify({"error": "Utilisateur ou événement non trouvé"}), 404
 
-    event_user_db = EventUsers.query.get(user_id,event_id)
-    print(event_user_db)
-
-
+    event_user_db = EventUsers.query.get((user_id,event_id))
     if event_user_db:
         return jsonify({"message": "L'utilisateur est déjà inscrit à cet événement"}), 409
 
@@ -94,6 +91,24 @@ def participate_event():
     db.session.flush()
 
     return jsonify({"message": "Utilisateur ajouté à l'événement avec succès"}), 201
+
+
+@event_bp.route("/unparticipate/<int:event_id>", methods=["DELETE"])
+@jwt_required()
+def unparticipate_event(event_id:int):
+    current_user = get_jwt_identity()
+    user_id = json.loads(current_user)['id']
+
+    participation_db  = EventUsers.query.get((user_id,event_id))
+    if not participation_db:
+        return jsonify({"message":"enrgistrement non trouvé "}),404
+    else :
+        db.session.delete(participation_db)
+        db.session.commit()
+
+    return  jsonify({"message":"Participation supprimer avec succées "}),200
+
+
 
 
 @event_bp.route("/<int:event_id>", methods=["GET"])
