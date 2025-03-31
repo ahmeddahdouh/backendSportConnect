@@ -1,5 +1,4 @@
 from config import db
-from app.associations.event_users import event_users
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -12,4 +11,5 @@ class User(db.Model):
     city = db.Column(db.String(200), nullable=False)
     phone = db.Column(db.String(200), nullable=False)
     age = db.Column(db.Integer, nullable=False)
-    events = db.relationship('Event', secondary=event_users, back_populates='users')
+    events = db.relationship('Event', secondary="event_users", back_populates='users')
+    profileImage = db.Column(db.String(), nullable=True)

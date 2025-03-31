@@ -1,20 +1,23 @@
-from flask import Blueprint, request, jsonify, abort
-from flask_jwt_extended import create_access_token
+import os
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.models.user import User
 from app.models.event import Event
-from app.associations.event_users import event_users
+from app.associations.event_users import EventUsers
 from config import db
 from sqlalchemy.exc import IntegrityError
-from flask import abort, make_response, jsonify
+from flask import request,abort, make_response, jsonify, Blueprint, send_from_directory, current_app
 import bcrypt
 from . import row2dict
 from flasgger import swag_from
-from flasgger import Swagger, SwaggerView, Schema, fields
+import json
+from datetime import timedelta
+import uuid
 
 auth_bp = Blueprint("auth", __name__)
 
+
 @auth_bp.route("/register", methods=["POST"])
-@swag_from('add_user_docs.yaml')
+@swag_from('../../static/docs/add_user_docs.yaml')
 def register():
     data = request.get_json()
     # Récupération des champs requis
@@ -70,8 +73,6 @@ def register():
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": f"An error occurred: {str(e)}"}), 500
-
-
 
 
 @auth_bp.route("/users/<int:user_id>", methods=["PUT"])
@@ -130,9 +131,12 @@ def login():
     if user:
         if bcrypt.checkpw(password.encode("utf-8"), user.password.encode("utf-8")):
             access_token = create_access_token(identity=
-                                               {'username': user.username,
-                                                'id': user.id}
-                                               )
+                                               json.dumps({'username': user.username,
+                                                           'id': user.id,
+                                                           'profileImage': user.profileImage,
+                                                           }
+                                                          ),
+                                               expires_delta=timedelta(hours=1))
             return jsonify(access_token=access_token), 200
         else:
             return jsonify({"message": "Invalid credentials"}), 401
@@ -141,10 +145,41 @@ def login():
 
 
 @auth_bp.route("/users", methods=["GET"])
+@jwt_required()
 def get_users():
     users = User.query.all()
     print(users)
     return jsonify([row2dict(user) for user in users])
+
+
+@auth_bp.route('/uploads/<filename>',methods=["GET"])
+def uploaded_file(filename):
+    print(current_app.config['UPLOAD_FOLDER'])
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+
+
+@auth_bp.route("/users/profile",methods=["PUT"])
+@jwt_required()
+def update_profile_image():
+    if "file" not in request.files:
+        return jsonify({"message": "Missing file"}), 400
+
+    current_user = get_jwt_identity()
+    current_user_json = json.loads(current_user)
+
+    file = request.files["file"]
+    if file.filename == "" :
+        return jsonify({"message": "Missing file"}), 400
+    file_ext = file.filename.split(".")[-1]
+    unique_id = uuid.uuid4()
+    profileImageName = str(unique_id) + "." + file_ext
+    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], profileImageName)
+    file.save(file_path)
+    user = User.query.get(current_user_json["id"])
+    user.profileImage = profileImageName
+    db.session.commit()
+
+    return jsonify({"image":user.profileImage}), 201
 
 
 @auth_bp.route("/users/<int:user_id>", methods=["GET"])
@@ -155,7 +190,7 @@ def get_user_by_id(user_id: int):
         abort(make_response(jsonify(message="Id organisateur n'existe pas"), 400))
 
     # Récupérer tous les événements auxquels l'utilisateur participe
-    events = Event.query.join(event_users).filter(event_users.c.user_id == user_id).all()
+    events = Event.query.join(EventUsers).filter(EventUsers.user_id == user_id).all()
 
     # Construire la liste des événements
     events_list = [
