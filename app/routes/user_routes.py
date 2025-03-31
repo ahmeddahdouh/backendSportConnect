@@ -2,7 +2,7 @@ import os
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.models.user import User
 from app.models.event import Event
-from app.associations.event_users import event_users
+from app.associations.event_users import EventUsers
 from config import db
 from sqlalchemy.exc import IntegrityError
 from flask import request,abort, make_response, jsonify, Blueprint, send_from_directory, current_app
@@ -190,7 +190,7 @@ def get_user_by_id(user_id: int):
         abort(make_response(jsonify(message="Id organisateur n'existe pas"), 400))
 
     # Récupérer tous les événements auxquels l'utilisateur participe
-    events = Event.query.join(event_users).filter(event_users.c.user_id == user_id).all()
+    events = Event.query.join(EventUsers).filter(EventUsers.user_id == user_id).all()
 
     # Construire la liste des événements
     events_list = [

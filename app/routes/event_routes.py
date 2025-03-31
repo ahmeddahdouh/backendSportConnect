@@ -2,7 +2,7 @@ from flask_jwt_extended import jwt_required
 from flask_jwt_extended import get_jwt_identity
 from app.models.event import Event
 from app.models.user import User
-from app.associations.event_users import event_users
+from app.associations.event_users import  EventUsers
 from flask import Blueprint, request, jsonify
 from config import db
 from .user_routes import get_user_by_id, login
@@ -80,21 +80,35 @@ def participate_event():
     if not user or not event:
         return jsonify({"error": "Utilisateur ou événement non trouvé"}), 404
 
-    # Vérifier si l'utilisateur est déjà inscrit à cet événement
-    existing_entry = db.session.execute(
-        db.select(event_users).where(
-            (event_users.c.user_id == user_id) & (event_users.c.event_id == event_id)
-        )
-    ).first()
-
-    if existing_entry:
+    event_user_db = EventUsers.query.get((user_id,event_id))
+    if event_user_db:
         return jsonify({"message": "L'utilisateur est déjà inscrit à cet événement"}), 409
 
-    # Insérer l'utilisateur dans l'événement
-    db.session.execute(event_users.insert().values(user_id=user_id, event_id=event_id))
+    event_users = EventUsers(**data)
+    db.session.add(event_users)
+    db.session.flush()
     db.session.commit()
+    db.session.flush()
 
     return jsonify({"message": "Utilisateur ajouté à l'événement avec succès"}), 201
+
+
+@event_bp.route("/unparticipate/<int:event_id>", methods=["DELETE"])
+@jwt_required()
+def unparticipate_event(event_id:int):
+    current_user = get_jwt_identity()
+    user_id = json.loads(current_user)['id']
+
+    participation_db  = EventUsers.query.get((user_id,event_id))
+    if not participation_db:
+        return jsonify({"message":"enrgistrement non trouvé "}),404
+    else :
+        db.session.delete(participation_db)
+        db.session.commit()
+
+    return  jsonify({"message":"Participation supprimer avec succées "}),200
+
+
 
 
 @event_bp.route("/<int:event_id>", methods=["GET"])
