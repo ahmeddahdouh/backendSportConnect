@@ -1,4 +1,3 @@
-from datetime import datetime
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import get_jwt_identity
 from app.models.event import Event
@@ -136,6 +135,14 @@ def delete_event_by_id(event_id):
     db.session.commit()
     return jsonify({"message": f"Événement {event_id} supprimé avec succès"}), 200
 
+@event_bp.route("/<int:event_id>/infomanager", methods=["GET"])
+def get_event_info_manager(event_id):
+    event = Event.query.get(event_id)
+    if not event:
+        return jsonify({"error": "Événement non trouvé"}), 404
+    manager = User.query.get(event.id_gestionnaire)
+    infomanager = {"firstname": manager.firstname, "familyname": manager.familyname, "profileimage": manager.profileImage, "age": manager.age} #age à remplacer par + tard score moyen des events
+    return jsonify(infomanager),200
 
 @event_bp.route("/<int:event_id>", methods=["PUT"])
 def update_event(event_id):
