@@ -13,23 +13,27 @@ event_bp = Blueprint('event', __name__)
 
 @event_bp.route("/", methods=["POST"])
 def add_event():
-    from flask import request
     data = request.get_json()
-    id_gestionnaire = data["id_gestionnaire"]
+
+    # Get the event manager's ID
+    id_gestionnaire = data.get("id_gestionnaire")
     user = get_user_by_id(id_gestionnaire)
+
     if not user:
         return jsonify({"error": "User does not exist"}), 400
+
+    # Create the event
     event = Event(**data)
     db.session.add(event)
-    db.session.flush()
+    db.session.flush()  # Get event.id before committing
+
+    # Add the manager as a participant using ORM
+    event_user = EventUsers(user_id=id_gestionnaire, event_id=event.id)
+    db.session.add(event_user)
+
     db.session.commit()
-    db.session.flush()
-    return (
-        jsonify({"message": "Événement ajouté avec succès", "event_id": event.id}),
-        201,
-    )
 
-
+    return jsonify({"message": "Événement ajouté avec succès", "event_id": event.id}), 201
 
 
 @event_bp.route("/booking", methods=["GET"])

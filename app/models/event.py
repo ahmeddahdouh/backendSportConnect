@@ -8,7 +8,7 @@ class Event(db.Model):
     event_description = db.Column(db.String(200), nullable=False)
     id_gestionnaire = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     id_sport = db.Column(db.Integer,db.ForeignKey("sports.id"),)
-    event_ville = db.Column(db.String, nullable=False)
+    event_ville = db.Column(db.String(200), nullable=False)
     event_date = db.Column(db.DateTime, nullable=False)
     event_max_utilisateur = db.Column(db.Integer, nullable=False)
     event_Items = db.Column(JSONB)
