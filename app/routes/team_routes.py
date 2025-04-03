@@ -65,6 +65,7 @@ def update_team(team_id):
     team.name = data.get("name", team.name)
     team.description = data.get("description", team.description)
     team.profile_picture = data.get("profile_picture", team.profile_picture)
+    team.manager_id = data.get("manager_id", team.manager_id)
 
     db.session.commit()
 
@@ -150,7 +151,7 @@ def update_team_sport_stat(team_id, sport_id):
 
     return {"message": "Team sport stats updated successfully."}, 200
 
-@team_bp.route("/<int:team_id>", methods=["GET"])
+@team_bp.route("/<int:team_id>", methods=["GET"]) #
 def get_team_info(team_id):
     team = Team.query.get(team_id)
     if not team:
