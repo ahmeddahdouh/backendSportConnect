@@ -149,3 +149,52 @@ def update_team_sport_stat(team_id, sport_id):
     db.session.commit()
 
     return {"message": "Team sport stats updated successfully."}, 200
+
+@team_bp.route("/<int:team_id>", methods=["GET"])
+def get_team_info(team_id):
+    team = Team.query.get(team_id)
+    if not team:
+        return {"message": "Team not found."}, 404
+
+    # Get sports played by the team
+    team_sports = TeamSports.query.filter_by(team_id=team_id).all()
+    sports_data = [{"sport_id": ts.sport_id, "sport_stat": ts.sport_stat} for ts in team_sports]
+
+    # Get team members
+    team_members = TeamUsers.query.filter_by(team_id=team_id).all()
+    members_data = [{"user_id": tu.user_id} for tu in team_members]
+
+    # Return full team details
+    return {
+        "team_id": team.id,
+        "name": team.name,
+        "description": team.description,
+        "profile_picture": team.profile_picture,
+        "manager_id": team.manager_id,
+        "sports": sports_data,
+        "members": members_data
+    }, 200
+
+
+@team_bp.route("/users/teams", methods=["GET"])
+def get_user_teams():
+    current_user = get_jwt_identity()
+    current_user_json = json.loads(current_user)
+    user_id = current_user_json.get("id")
+
+    user_teams = TeamUsers.query.filter_by(user_id=user_id).all()
+
+    if not user_teams:
+        return {"message": "User has not joined any teams."}, 404
+
+    teams_data = []
+    for entry in user_teams:
+        team = Team.query.get(entry.team_id)
+        teams_data.append({
+            "team_id": team.id,
+            "name": team.name,
+            "description": team.description,
+            "profile_picture": team.profile_picture
+        })
+
+    return {"user_id": user_id, "teams": teams_data}, 200
