@@ -1,5 +1,3 @@
-from flask import Blueprint
-from config import db
 from app.models.sport import Sport
 from flask import Blueprint, request, jsonify
 from . import row2dict

@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import get_jwt_identity
 from app.models.event import Event
@@ -13,23 +14,27 @@ event_bp = Blueprint('event', __name__)
 
 @event_bp.route("/", methods=["POST"])
 def add_event():
-    from flask import request
     data = request.get_json()
-    id_gestionnaire = data["id_gestionnaire"]
+
+    # Get the event manager's ID
+    id_gestionnaire = data.get("id_gestionnaire")
     user = get_user_by_id(id_gestionnaire)
+
     if not user:
         return jsonify({"error": "User does not exist"}), 400
+
+    # Create the event
     event = Event(**data)
     db.session.add(event)
-    db.session.flush()
+    db.session.flush()  # Get event.id before committing
+
+    # Add the manager as a participant using ORM
+    event_user = EventUsers(user_id=id_gestionnaire, event_id=event.id)
+    db.session.add(event_user)
+
     db.session.commit()
-    db.session.flush()
-    return (
-        jsonify({"message": "Événement ajouté avec succès", "event_id": event.id}),
-        201,
-    )
 
-
+    return jsonify({"message": "Événement ajouté avec succès", "event_id": event.id}), 201
 
 
 @event_bp.route("/booking", methods=["GET"])
@@ -38,6 +43,10 @@ def get_events():
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
     return get_events_filtred(Event.id_gestionnaire != int(current_user_json['id']))
+
+@event_bp.route("/booking_test", methods=["GET"])
+def get_events_test():
+    return jsonify([row2dict(event) for event in Event.query.all()])
 
 @event_bp.route("/curentEvents", methods=["GET"])
 @jwt_required()
@@ -136,6 +145,62 @@ def delete_event_by_id(event_id):
     return jsonify({"message": f"Événement {event_id} supprimé avec succès"}), 200
 
 
+@event_bp.route("/<int:event_id>", methods=["PUT"])
+def update_event(event_id):
+    current_user = get_jwt_identity()
+    current_user_json = json.loads(current_user)
+    user_id = current_user_json.get("id")
+
+    event = Event.query.get(event_id)
+    if not event:
+        return {"message": "Event not found."}, 404
+
+    # Check if the user is the event manager
+    if event.id_gestionnaire != user_id:
+        return {"message": "Unauthorized. Only the event manager can update this event."}, 403
+
+    data = request.get_json()
+
+    # Update all possible fields, including the sport and manager (although manager should not change)
+    event.event_name = data.get("event_name", event.event_name)
+    event.event_description = data.get("event_description", event.event_description)
+    event.event_ville = data.get("event_ville", event.event_ville)
+
+    # Update the event manager's ID (this is typically not changed, but left for flexibility)
+    event.id_gestionnaire = data.get("id_gestionnaire", event.id_gestionnaire)
+
+    # Update the sport played by the event
+    event.id_sport = data.get("id_sport", event.id_sport)
+
+    # Update maximum number of users and items related to the event
+    event.event_max_utilisateur = data.get("event_max_utilisateur", event.event_max_utilisateur)
+    event.event_Items = data.get("event_Items", event.event_Items)
+
+    event.is_private = data.get("is_private", event.is_private)
+    event.is_team_vs_team = data.get("is_team_vs_team", event.is_team_vs_team)
+    event.event_age_min = data.get("event_age_min", event.event_age_min)
+    event.event_age_max = data.get("event_age_max", event.event_age_max)
+    event.nombre_utilisateur_min = data.get("nombre_utilisateur_min", event.nombre_utilisateur_min)
 
 
+    # Validate and update event date
+    if "event_date" in data:
+        try:
+            event.event_date = datetime.strptime(data["event_date"], "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return {"message": "Invalid date format. Use YYYY-MM-DD HH:MM:SS."}, 400
 
+    # Commit the changes to the database
+    db.session.commit()
+
+    return {"message": "Event updated successfully.", "event": event.to_dict([])}, 200
+
+
+@event_bp.route("/<int:event_id>/infomanager", methods=["GET"])
+def get_event_info_manager(event_id):
+    event = Event.query.get(event_id)
+    if not event:
+        return jsonify({"error": "Événement non trouvé"}), 404
+    manager = User.query.get(event.id_gestionnaire)
+    infomanager = {"firstname": manager.firstname, "familyname": manager.familyname, "profileimage": manager.profileImage, "age": manager.age} #age à remplacer par + tard score moyen des events
+    return jsonify(infomanager),200
