@@ -4,6 +4,7 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_sqlalchemy import SQLAlchemy
 from app.routes.app_routes import main_bp
+from app.routes.team_routes import team_bp
 from app.routes.user_routes import auth_bp
 from app.routes.event_routes import event_bp
 from app.routes.sport_routes import sport_bp
@@ -42,4 +43,5 @@ def create_app():
     app.register_blueprint(main_bp, url_prefix="")
     app.register_blueprint(event_bp, url_prefix="/event")
     app.register_blueprint(sport_bp, url_prefix="/sport")
+    app.register_blueprint(team_bp, url_prefix="/team")
     return app

@@ -40,6 +40,10 @@ def get_events():
     current_user_json = json.loads(current_user)
     return get_events_filtred(Event.id_gestionnaire != int(current_user_json['id']))
 
+@event_bp.route("/booking_test", methods=["GET"])
+def get_events_test():
+    return jsonify([row2dict(event) for event in Event.query.all()])
+
 @event_bp.route("/curentEvents", methods=["GET"])
 @jwt_required()
 def get_curent_user_events():
@@ -187,3 +191,12 @@ def update_event(event_id):
 
     return {"message": "Event updated successfully.", "event": event.to_dict([])}, 200
 
+
+@event_bp.route("/<int:event_id>/infomanager", methods=["GET"])
+def get_event_info_manager(event_id):
+    event = Event.query.get(event_id)
+    if not event:
+        return jsonify({"error": "Événement non trouvé"}), 404
+    manager = User.query.get(event.id_gestionnaire)
+    infomanager = {"firstname": manager.firstname, "familyname": manager.familyname, "profileimage": manager.profileImage, "age": manager.age} #age à remplacer par + tard score moyen des events
+    return jsonify(infomanager),200
