@@ -16,7 +16,8 @@ from flask_cors import CORS
 
 @pytest.fixture
 def app():
-    app = create_app()
+    app = Flask(__name__)
+    app.register_blueprint(main_bp)  # Register your blueprint
     return app
 
 @pytest.fixture
