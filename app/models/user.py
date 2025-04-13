@@ -10,6 +10,6 @@ class User(db.Model):
     familyname = db.Column(db.String(200), nullable=False)
     city = db.Column(db.String(200), nullable=False)
     phone = db.Column(db.String(200), nullable=False)
-    age = db.Column(db.Integer, nullable=False)
+    date_of_birth = db.Column(db.Date, nullable=False) 
     events = db.relationship('Event', secondary="event_users", back_populates='users')
     profileImage = db.Column(db.String(), nullable=True)
