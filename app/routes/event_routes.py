@@ -1,3 +1,5 @@
+import datetime
+
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import get_jwt_identity
 from app.models.event import Event
@@ -168,30 +170,6 @@ def update_event(event_id):
     # Update the event manager's ID (this is typically not changed, but left for flexibility)
     event.id_gestionnaire = data.get("id_gestionnaire", event.id_gestionnaire)
 
-@event_bp.route("/<int:event_id>", methods=["PUT"])
-def update_event(event_id):
-    current_user = get_jwt_identity()
-    current_user_json = json.loads(current_user)
-    user_id = current_user_json.get("id")
-
-    event = Event.query.get(event_id)
-    if not event:
-        return {"message": "Event not found."}, 404
-
-    # Check if the user is the event manager
-    if event.id_gestionnaire != user_id:
-        return {"message": "Unauthorized. Only the event manager can update this event."}, 403
-
-    data = request.get_json()
-
-    # Update all possible fields, including the sport and manager (although manager should not change)
-    event.event_name = data.get("event_name", event.event_name)
-    event.event_description = data.get("event_description", event.event_description)
-    event.event_ville = data.get("event_ville", event.event_ville)
-
-    # Update the event manager's ID (this is typically not changed, but left for flexibility)
-    event.id_gestionnaire = data.get("id_gestionnaire", event.id_gestionnaire)
-
     # Update the sport played by the event
     event.id_sport = data.get("id_sport", event.id_sport)
 
@@ -219,11 +197,3 @@ def update_event(event_id):
     return {"message": "Event updated successfully.", "event": event.to_dict([])}, 200
 
 
-@event_bp.route("/<int:event_id>/infomanager", methods=["GET"])
-def get_event_info_manager(event_id):
-    event = Event.query.get(event_id)
-    if not event:
-        return jsonify({"error": "Événement non trouvé"}), 404
-    manager = User.query.get(event.id_gestionnaire)
-    infomanager = {"firstname": manager.firstname, "familyname": manager.familyname, "profileimage": manager.profileImage, "age": manager.age} #age à remplacer par + tard score moyen des events
-    return jsonify(infomanager),200
