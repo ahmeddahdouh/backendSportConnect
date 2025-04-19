@@ -1,70 +1,55 @@
 import datetime
-
+from app.services.user_service import UserService
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import get_jwt_identity
-from app.models.event import Event
-from app.models.user import User
+from ..models import Event
+from ..models import User
 from app.associations.event_users import  EventUsers
 from flask import Blueprint, request, jsonify
 from config import db
-from .user_routes import get_user_by_id, login
-from . import row2dict
+from .user_routes import user_service
 import json
+from ..services.event_service import EventService
+
+event_service = EventService()
+user_service = UserService()
 
 event_bp = Blueprint('event', __name__)
 
 @event_bp.route("/", methods=["POST"])
 def add_event():
-    from flask import request
     data = request.get_json()
     id_gestionnaire = data["id_gestionnaire"]
-    user = get_user_by_id(id_gestionnaire)
+    user = user_service.get_user_by_id(id_gestionnaire)
+
     if not user:
-        return jsonify({"error": "User does not exist"}), 400
-    event = Event(**data)
-    db.session.add(event)
-    db.session.flush()
-    db.session.commit()
-    db.session.flush()
-    return (
-        jsonify({"message": "Événement ajouté avec succès", "event_id": event.id}),
-        201,
-    )
-
-
-
+        raise ValueError("User does not exist")
+    else:
+        try:
+            event = event_service.create_event(data)
+            return (
+                jsonify({"message": "Événement ajouté avec succès", "event_id": event.id}),
+                201,
+            )
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": "Erreur interne du serveur."}), 500
 
 @event_bp.route("/booking", methods=["GET"])
 @jwt_required()
 def get_events():
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
-    return get_events_filtred(Event.id_gestionnaire != int(current_user_json['id']))
+    return event_service.get_events_filtred(Event.id_gestionnaire != int(current_user_json['id']))
 
 @event_bp.route("/curentEvents", methods=["GET"])
 @jwt_required()
 def get_curent_user_events():
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
-    return get_events_filtred(Event.id_gestionnaire == int(current_user_json['id']))
+    return event_service.get_events_filtred(Event.id_gestionnaire == int(current_user_json['id']))
 
-
-def get_events_filtred(filter):
-    events = Event.query.filter(filter).all()
-    events_to_return = [row2dict(event) for event in events]
-
-    for event in events_to_return:
-        # Ajout du username du gestionnaire
-        event["username"] = get_user_by_id(int(event["id_gestionnaire"])).get_json()["username"]
-
-        # Récupération des utilisateurs participants à l'événement
-        event_obj = Event.query.get(event["id"])  # Récupération de l'objet Event
-        event["members"] = [
-            {"id": user.id, "firstname": user.firstname, "familyname": user.familyname}
-            for user in event_obj.users
-        ]
-
-    return jsonify(events_to_return)
 
 @event_bp.route("/participate", methods=["POST"])
 def participate_event():

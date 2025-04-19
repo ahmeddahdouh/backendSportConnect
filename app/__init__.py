@@ -1,13 +1,10 @@
 import os
 from flask import Flask
-from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from flask_sqlalchemy import SQLAlchemy
-from app.routes.app_routes import main_bp
-from app.routes.team_routes import team_bp
-from app.routes.user_routes import auth_bp
-from app.routes.event_routes import event_bp
-from app.routes.sport_routes import sport_bp
+from app.controllers.team_routes import team_bp
+from app.controllers.user_routes import auth_bp
+from app.controllers.event_routes import event_bp
+from app.controllers.sport_routes import sport_bp
 from config import Config, db
 from flasgger import Swagger
 from flask_cors import CORS
@@ -40,7 +37,6 @@ def create_app():
     with app.app_context():
         db.create_all()
     app.register_blueprint(auth_bp, url_prefix="/auth")
-    app.register_blueprint(main_bp, url_prefix="")
     app.register_blueprint(event_bp, url_prefix="/event")
     app.register_blueprint(sport_bp, url_prefix="/sport")
     app.register_blueprint(team_bp, url_prefix="/team")

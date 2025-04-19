@@ -15,8 +15,10 @@ import uuid
 
 from ..associations.user_sports import UserSports
 from ..models import Sport
+from ..services.user_service import UserService
 
 auth_bp = Blueprint("auth", __name__)
+user_service = UserService()
 
 
 @auth_bp.route("/register", methods=["POST"])
@@ -265,34 +267,5 @@ def update_profile_image():
 
 @auth_bp.route("/users/<int:user_id>", methods=["GET"])
 def get_user_by_id(user_id: int):
-    user = User.query.get(user_id)
-
-    if not user:
-        abort(make_response(jsonify(message="Id organisateur n'existe pas"), 400))
-
-    # Récupérer tous les événements auxquels l'utilisateur participe
-    events = Event.query.join(EventUsers).filter(EventUsers.user_id == user_id).all()
-
-    # Construire la liste des événements
-    events_list = [
-        {
-            "id": event.id,
-            "event_name": event.event_name,
-            "event_description": event.event_description,
-            "event_ville": event.event_ville,
-            "event_date": event.event_date,
-            "event_max_utilisateur": event.event_max_utilisateur,
-            "is_private": event.is_private,
-            "is_team_vs_team": event.is_team_vs_team,
-            "event_age_min": event.event_age_min,
-            "event_age_max": event.event_age_max,
-            "nombre_utilisateur_min": event.nombre_utilisateur_min,
-        }
-        for event in events
-    ]
-
-    # Ajouter la liste des événements à la réponse utilisateur
-    user_data = row2dict(user)
-    user_data["events"] = events_list
-
-    return jsonify(user_data)
+    user = user_service.get_user_by_id(user_id)
+    return user
