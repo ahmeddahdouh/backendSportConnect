@@ -16,16 +16,17 @@ DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-ALLOWED_EXTENSIONS =  {'png', 'jpg', 'jpeg', 'gif'}
-
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
 
 def create_app():
     app = Flask(__name__)
     # application des cors
     CORS(app)
-    app.config['UPLOAD_FOLDER'] = app.config['UPLOAD_FOLDER'] = os.path.abspath('uploads')
-    #declaration de
+    app.config["UPLOAD_FOLDER"] = app.config["UPLOAD_FOLDER"] = os.path.abspath(
+        "uploads"
+    )
+    # declaration de
     swagger = Swagger(app)
     JWTManager(app)
     CORS(app, resources={r"/auth/*": {"origins": "http://localhost:3000"}})

@@ -5,10 +5,10 @@ from app.associations.team_users_sports import TeamUsers, TeamSports
 from config import db
 from app.models.team import Team
 
-team_bp = Blueprint('team', __name__)
+team_bp = Blueprint("team", __name__)
 
 
-@team_bp.route("/", methods=["POST"]) #création d'une équipe
+@team_bp.route("/", methods=["POST"])  # création d'une équipe
 def create_team():
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
@@ -22,14 +22,19 @@ def create_team():
     if not name:
         return {"message": "Team name is required."}, 400
 
-    new_team = Team(name=name, description=description, profile_picture=profile_picture, manager_id=manager_id)
+    new_team = Team(
+        name=name,
+        description=description,
+        profile_picture=profile_picture,
+        manager_id=manager_id,
+    )
     db.session.add(new_team)
     db.session.commit()
 
     return {"message": "Team created successfully.", "team_id": new_team.id}, 201
 
 
-@team_bp.route("/<int:team_id>", methods=["DELETE"]) #suppression d'une équipe
+@team_bp.route("/<int:team_id>", methods=["DELETE"])  # suppression d'une équipe
 def delete_team(team_id):
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
@@ -48,7 +53,9 @@ def delete_team(team_id):
     return {"message": "Team deleted successfully."}, 200
 
 
-@team_bp.route("/<int:team_id>", methods=["PUT"]) #modification des informations de l'équipe
+@team_bp.route(
+    "/<int:team_id>", methods=["PUT"]
+)  # modification des informations de l'équipe
 def update_team(team_id):
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
@@ -72,7 +79,9 @@ def update_team(team_id):
     return {"message": "Team updated successfully."}, 200
 
 
-@team_bp.route("/<int:team_id>/members", methods=["POST"]) #ajout d'un membre à l'équipe
+@team_bp.route(
+    "/<int:team_id>/members", methods=["POST"]
+)  # ajout d'un membre à l'équipe
 def add_team_member(team_id):
     data = request.get_json()
     user_id = data.get("user_id")
@@ -87,7 +96,9 @@ def add_team_member(team_id):
     return {"message": "Member added successfully."}, 201
 
 
-@team_bp.route("/<int:team_id>/members/<int:user_id>", methods=["DELETE"]) #suppression d'un membre de l'équipe
+@team_bp.route(
+    "/<int:team_id>/members/<int:user_id>", methods=["DELETE"]
+)  # suppression d'un membre de l'équipe
 def remove_team_member(team_id, user_id):
     member = TeamUsers.query.filter_by(team_id=team_id, user_id=user_id).first()
     if not member:
@@ -99,7 +110,9 @@ def remove_team_member(team_id, user_id):
     return {"message": "Member removed successfully."}, 200
 
 
-@team_bp.route("/<int:team_id>/sports", methods=["POST"]) #ajout d'un sport pratiqué par l'équipe
+@team_bp.route(
+    "/<int:team_id>/sports", methods=["POST"]
+)  # ajout d'un sport pratiqué par l'équipe
 def add_team_sport(team_id):
     data = request.get_json()
     sport_id = data.get("sport_id")
@@ -115,7 +128,9 @@ def add_team_sport(team_id):
     return {"message": "Sport added successfully."}, 201
 
 
-@team_bp.route("/<int:team_id>/sports/<int:sport_id>", methods=["DELETE"]) #suppression d'un sport joué par l'équipe
+@team_bp.route(
+    "/<int:team_id>/sports/<int:sport_id>", methods=["DELETE"]
+)  # suppression d'un sport joué par l'équipe
 def remove_team_sport(team_id, sport_id):
     team_sport = TeamSports.query.filter_by(team_id=team_id, sport_id=sport_id).first()
     if not team_sport:
@@ -126,7 +141,10 @@ def remove_team_sport(team_id, sport_id):
 
     return {"message": "Sport removed successfully."}, 200
 
-@team_bp.route("/<int:team_id>/sports/<int:sport_id>", methods=["PUT"]) #Modification des stats d'une équipe dans un sport précis
+
+@team_bp.route(
+    "/<int:team_id>/sports/<int:sport_id>", methods=["PUT"]
+)  # Modification des stats d'une équipe dans un sport précis
 def update_team_sport_stat(team_id, sport_id):
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
@@ -151,7 +169,8 @@ def update_team_sport_stat(team_id, sport_id):
 
     return {"message": "Team sport stats updated successfully."}, 200
 
-@team_bp.route("/<int:team_id>", methods=["GET"]) #
+
+@team_bp.route("/<int:team_id>", methods=["GET"])  #
 def get_team_info(team_id):
     team = Team.query.get(team_id)
     if not team:
@@ -159,7 +178,9 @@ def get_team_info(team_id):
 
     # Get sports played by the team
     team_sports = TeamSports.query.filter_by(team_id=team_id).all()
-    sports_data = [{"sport_id": ts.sport_id, "sport_stat": ts.sport_stat} for ts in team_sports]
+    sports_data = [
+        {"sport_id": ts.sport_id, "sport_stat": ts.sport_stat} for ts in team_sports
+    ]
 
     # Get team members
     team_members = TeamUsers.query.filter_by(team_id=team_id).all()
@@ -173,7 +194,7 @@ def get_team_info(team_id):
         "profile_picture": team.profile_picture,
         "manager_id": team.manager_id,
         "sports": sports_data,
-        "members": members_data
+        "members": members_data,
     }, 200
 
 
@@ -191,11 +212,13 @@ def get_user_teams():
     teams_data = []
     for entry in user_teams:
         team = Team.query.get(entry.team_id)
-        teams_data.append({
-            "team_id": team.id,
-            "name": team.name,
-            "description": team.description,
-            "profile_picture": team.profile_picture
-        })
+        teams_data.append(
+            {
+                "team_id": team.id,
+                "name": team.name,
+                "description": team.description,
+                "profile_picture": team.profile_picture,
+            }
+        )
 
     return {"user_id": user_id, "teams": teams_data}, 200

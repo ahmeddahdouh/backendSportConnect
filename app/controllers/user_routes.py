@@ -5,7 +5,15 @@ from app.models.event import Event
 from app.associations.event_users import EventUsers
 from config import db
 from sqlalchemy.exc import IntegrityError
-from flask import request,abort, make_response, jsonify, Blueprint, send_from_directory, current_app
+from flask import (
+    request,
+    abort,
+    make_response,
+    jsonify,
+    Blueprint,
+    send_from_directory,
+    current_app,
+)
 import bcrypt
 from . import row2dict
 from flasgger import swag_from
@@ -22,7 +30,7 @@ user_service = UserService()
 
 
 @auth_bp.route("/register", methods=["POST"])
-@swag_from('../../static/docs/add_user_docs.yaml')
+@swag_from("../../static/docs/add_user_docs.yaml")
 def register():
     data = request.get_json()
     # Récupération des champs requis
@@ -37,7 +45,19 @@ def register():
     age = data.get("age")
 
     # Vérification des champs obligatoires
-    if not all([username, email, password, confirm_password, firstname, familyname, city, phone, age]):
+    if not all(
+        [
+            username,
+            email,
+            password,
+            confirm_password,
+            firstname,
+            familyname,
+            city,
+            phone,
+            age,
+        ]
+    ):
         return jsonify({"message": "Missing data"}), 400
 
     # Vérification de la correspondance des mots de passe
@@ -53,7 +73,9 @@ def register():
         return jsonify({"message": "Age must be an integer"}), 400
 
     # Hachage du mot de passe
-    hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode(
+        "utf-8"
+    )
 
     # Création de l'utilisateur
     user = User(
@@ -64,7 +86,7 @@ def register():
         familyname=familyname,
         city=city,
         phone=phone,
-        age=age
+        age=age,
     )
 
     try:
@@ -80,7 +102,9 @@ def register():
         return jsonify({"message": f"An error occurred: {str(e)}"}), 500
 
 
-@auth_bp.route("users/<int:user_id>/sports", methods=["GET"]) #Obtenir la liste des sports joués par un joueur, et ses stats dans chaque sport
+@auth_bp.route(
+    "users/<int:user_id>/sports", methods=["GET"]
+)  # Obtenir la liste des sports joués par un joueur, et ses stats dans chaque sport
 def get_sports(user_id):
     user_sports = UserSports.query.filter_by(user_id=user_id).all()
     user = User.query.get(user_id)
@@ -90,18 +114,25 @@ def get_sports(user_id):
 
     sports_data = []
     for entry in user_sports:
-        sports_data.append({
-            "sport_id": entry.sport_id,
-            "sport_name": Sport.query.get(entry.sport_id).sport_nom,
-            "sport_stat": entry.sport_stat
-        })
+        sports_data.append(
+            {
+                "sport_id": entry.sport_id,
+                "sport_name": Sport.query.get(entry.sport_id).sport_nom,
+                "sport_stat": entry.sport_stat,
+            }
+        )
 
-    return {"user_id": user_id,
-            "firstname": user.firstname,
-            "familyname": user.familyname,"sports": sports_data}, 200
+    return {
+        "user_id": user_id,
+        "firstname": user.firstname,
+        "familyname": user.familyname,
+        "sports": sports_data,
+    }, 200
 
 
-@auth_bp.route("users/sports", methods=["POST"]) #On envoie un id user, un id sport, et un json (même vide) de stat
+@auth_bp.route(
+    "users/sports", methods=["POST"]
+)  # On envoie un id user, un id sport, et un json (même vide) de stat
 def add_sport():
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
@@ -114,7 +145,9 @@ def add_sport():
     if not sport_id:
         return {"message": "sport_id is required."}, 400
 
-    existing_entry = UserSports.query.filter_by(user_id=user_id, sport_id=sport_id).first()
+    existing_entry = UserSports.query.filter_by(
+        user_id=user_id, sport_id=sport_id
+    ).first()
     if existing_entry:
         return {"message": "Sport already exists for this user."}, 400
 
@@ -125,7 +158,9 @@ def add_sport():
     return {"message": "Sport added successfully."}, 201
 
 
-@auth_bp.route("users/sports/<int:sport_id>", methods=["PUT"])  #changer les stats d'un user pour un sport précis
+@auth_bp.route(
+    "users/sports/<int:sport_id>", methods=["PUT"]
+)  # changer les stats d'un user pour un sport précis
 def update_sport_stat(sport_id):
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
@@ -143,7 +178,9 @@ def update_sport_stat(sport_id):
     return {"message": "Sport stats updated successfully."}, 200
 
 
-@auth_bp.route("users/sports/<int:sport_id>", methods=["DELETE"]) #suppression d'un sport joué
+@auth_bp.route(
+    "users/sports/<int:sport_id>", methods=["DELETE"]
+)  # suppression d'un sport joué
 def delete_sport(sport_id):
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
@@ -158,7 +195,10 @@ def delete_sport(sport_id):
 
     return {"message": "Sport removed successfully."}, 200
 
-@auth_bp.route("/users/<int:user_id>", methods=["PUT"]) #modification des informations de l'utilisateur
+
+@auth_bp.route(
+    "/users/<int:user_id>", methods=["PUT"]
+)  # modification des informations de l'utilisateur
 def update_user(user_id):
     data = request.get_json()
 
@@ -188,7 +228,9 @@ def update_user(user_id):
         except ValueError:
             return jsonify({"message": "Age must be an integer"}), 400
     if "password" in data:
-        hashed_password = bcrypt.hashpw(data["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        hashed_password = bcrypt.hashpw(
+            data["password"].encode("utf-8"), bcrypt.gensalt()
+        ).decode("utf-8")
         user.password = hashed_password
 
     try:
@@ -213,13 +255,16 @@ def login():
     user = User.query.filter_by(username=username).first()
     if user:
         if bcrypt.checkpw(password.encode("utf-8"), user.password.encode("utf-8")):
-            access_token = create_access_token(identity=
-                                               json.dumps({'username': user.username,
-                                                           'id': user.id,
-                                                           'profileImage': user.profileImage,
-                                                           }
-                                                          ),
-                                               expires_delta=timedelta(hours=1))
+            access_token = create_access_token(
+                identity=json.dumps(
+                    {
+                        "username": user.username,
+                        "id": user.id,
+                        "profileImage": user.profileImage,
+                    }
+                ),
+                expires_delta=timedelta(hours=1),
+            )
             return jsonify(access_token=access_token), 200
         else:
             return jsonify({"message": "Invalid credentials"}), 401
@@ -235,13 +280,13 @@ def get_users():
     return jsonify([row2dict(user) for user in users])
 
 
-@auth_bp.route('/uploads/<filename>',methods=["GET"])
+@auth_bp.route("/uploads/<filename>", methods=["GET"])
 def uploaded_file(filename):
-    print(current_app.config['UPLOAD_FOLDER'])
-    return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+    print(current_app.config["UPLOAD_FOLDER"])
+    return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
 
 
-@auth_bp.route("/users/profile",methods=["PUT"])
+@auth_bp.route("/users/profile", methods=["PUT"])
 @jwt_required()
 def update_profile_image():
     if "file" not in request.files:
@@ -251,18 +296,18 @@ def update_profile_image():
     current_user_json = json.loads(current_user)
 
     file = request.files["file"]
-    if file.filename == "" :
+    if file.filename == "":
         return jsonify({"message": "Missing file"}), 400
     file_ext = file.filename.split(".")[-1]
     unique_id = uuid.uuid4()
     profileImageName = str(unique_id) + "." + file_ext
-    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], profileImageName)
+    file_path = os.path.join(current_app.config["UPLOAD_FOLDER"], profileImageName)
     file.save(file_path)
     user = User.query.get(current_user_json["id"])
     user.profileImage = profileImageName
     db.session.commit()
 
-    return jsonify({"image":user.profileImage}), 201
+    return jsonify({"image": user.profileImage}), 201
 
 
 @auth_bp.route("/users/<int:user_id>", methods=["GET"])
