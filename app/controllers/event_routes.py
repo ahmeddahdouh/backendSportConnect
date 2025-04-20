@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from app.services.user_service import UserService
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import get_jwt_identity
@@ -131,54 +131,33 @@ def get_event_info_manager(event_id):
     infomanager = {"firstname": manager.firstname, "familyname": manager.familyname, "profileimage": manager.profileImage, "age": manager.age} #age à remplacer par + tard score moyen des events
     return jsonify(infomanager),200
 
+
 @event_bp.route("/<int:event_id>", methods=["PUT"])
+@jwt_required()
 def update_event(event_id):
+    # recupérer le id du current user via le token envoyé
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
     user_id = current_user_json.get("id")
 
-    event = Event.query.get(event_id)
+
+    event = event_service.get_event_by_id(event_id)
     if not event:
         return {"message": "Event not found."}, 404
 
-    # Check if the user is the event manager
     if event.id_gestionnaire != user_id:
         return {"message": "Unauthorized. Only the event manager can update this event."}, 403
 
     data = request.get_json()
 
-    # Update all possible fields, including the sport and manager (although manager should not change)
-    event.event_name = data.get("event_name", event.event_name)
-    event.event_description = data.get("event_description", event.event_description)
-    event.event_ville = data.get("event_ville", event.event_ville)
-
-    # Update the event manager's ID (this is typically not changed, but left for flexibility)
-    event.id_gestionnaire = data.get("id_gestionnaire", event.id_gestionnaire)
-
-    # Update the sport played by the event
-    event.id_sport = data.get("id_sport", event.id_sport)
-
-    # Update maximum number of users and items related to the event
-    event.event_max_utilisateur = data.get("event_max_utilisateur", event.event_max_utilisateur)
-    event.event_Items = data.get("event_Items", event.event_Items)
-
-    event.is_private = data.get("is_private", event.is_private)
-    event.is_team_vs_team = data.get("is_team_vs_team", event.is_team_vs_team)
-    event.event_age_min = data.get("event_age_min", event.event_age_min)
-    event.event_age_max = data.get("event_age_max", event.event_age_max)
-    event.nombre_utilisateur_min = data.get("nombre_utilisateur_min", event.nombre_utilisateur_min)
+    try:
+        event_service.update_event(event, data)
+        return {"message": "Event updated successfully.", "event": event.to_dict([])}, 200
+    except ValueError as e:
+        return {"error": str(e)}, 400
+    except Exception as e:
+        return {"error": str(e)}, 500
 
 
-    # Validate and update event date
-    if "event_date" in data:
-        try:
-            event.event_date = datetime.strptime(data["event_date"], "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            return {"message": "Invalid date format. Use YYYY-MM-DD HH:MM:SS."}, 400
-
-    # Commit the changes to the database
-    db.session.commit()
-
-    return {"message": "Event updated successfully.", "event": event.to_dict([])}, 200
 
 

@@ -1,4 +1,5 @@
 from dataclasses import asdict
+from datetime import datetime
 
 from flask import jsonify
 
@@ -36,3 +37,9 @@ class EventService:
             ]
 
         return jsonify(events_to_return)
+
+    def get_event_by_id(self, event_id):
+        return self.event_repository.get_event_by_id(event_id)
+
+    def update_event(self, event, data):
+       return  self.event_repository.update_event(event, data)
