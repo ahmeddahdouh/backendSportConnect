@@ -7,16 +7,13 @@ class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     event_name = db.Column(db.String, nullable=False)
     event_description = db.Column(db.String(200), nullable=False)
-<<<<<<< HEAD
     id_gestionnaire = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     id_sport = db.Column(
         db.Integer,
         db.ForeignKey("sports.id"),
     )
-=======
     id_gestionnaire = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     id_sport = db.Column(db.Integer,db.ForeignKey("sports.id"),)
->>>>>>> 2f4e9f3 (version 1)
     event_ville = db.Column(db.String(200), nullable=False)
     event_date = db.Column(db.DateTime, nullable=False)
     event_max_utilisateur = db.Column(db.Integer, nullable=False)
