@@ -15,9 +15,10 @@ class UserRepository:
         results = (
             db.session.query(Event)
             .join(User, User.id == Event.id_gestionnaire)
-            .filter(User.id == 1)
+            .filter(User.id == user_id)
             .all()
         )
+        return results
 
     def add_user(self, user_data):
         user_db = User(**user_data)

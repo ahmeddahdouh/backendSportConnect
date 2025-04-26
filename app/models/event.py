@@ -21,6 +21,7 @@ class Event(db.Model):
     event_age_min = db.Column(db.Integer, nullable=False)
     event_age_max = db.Column(db.Integer, nullable=False)
     nombre_utilisateur_min = db.Column(db.Integer, nullable=False)
+    event_image = db.Column(db.String, nullable=True)
     longitude = db.Column(db.Float)
     latitude = db.Column(db.Float)
 
