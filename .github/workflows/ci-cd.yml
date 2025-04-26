@@ -45,11 +45,17 @@ jobs:
       run: |
         docker build -t my-flask-app .
 
-    - name: Run docker-compose
+    - name: Set environment variables
       run: |
-        docker-compose up -d
+        echo "DB_USER=postgres" >> $GITHUB_ENV
+        echo "DB_PASSWORD=admin" >> $GITHUB_ENV
+        echo "DB_NAME=sportConnectBack" >> $GITHUB_ENV
+
+    - name: Run docker compose
+      run: |
+        docker compose up -d
         sleep 20
 
-    - name: Shutdown docker-compose
+    - name: Shutdown docker compose
       run: |
-        docker-compose down
+        docker compose down
