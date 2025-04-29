@@ -18,15 +18,20 @@ def add_event():
     Crée un nouvel événement avec les données fournies.
     Vérifie que le gestionnaire existe avant de créer l'événement.
     """
-    data = request.get_json()
+    data = json.loads(request.form["data"])
     id_gestionnaire = data["id_gestionnaire"]
     user = user_service.get_user_by_id(id_gestionnaire)
+    if "file" not in request.files:
+        return jsonify({"message": "Fichier manquant"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"message": "Nom de fichier vide"}), 400
 
     if not user:
         raise ValueError("L'utilisateur n'existe pas")
     else:
         try:
-            event = event_service.create_event(data)
+            event = event_service.create_event(data,file)
             return jsonify({
                 "message": "Événement ajouté avec succès",
                 "event_id": event.id
@@ -47,6 +52,17 @@ def get_events():
     return event_service.get_events_filtred(
         Event.id_gestionnaire != int(current_user_json["id"])
     )
+
+
+@event_bp.route("/sortedEvents", methods=["GET"])
+def get_events_sorted_by_date():
+    """
+    Récupère tous les événements sauf ceux créés par l'utilisateur actuellement connecté.
+    """
+    return event_service.get_events_sorted_by_date()
+
+
+
 
 @event_bp.route("/curentEvents", methods=["GET"])
 @jwt_required()

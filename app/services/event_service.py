@@ -1,9 +1,11 @@
-from dataclasses import asdict
+import uuid
+import os
 from datetime import datetime
-from flask import jsonify, abort
+
+from flask import jsonify, current_app
 from app.controllers import row2dict
 from app.models import Event
-from app.repositories import event_repository
+import app
 from app.repositories.event_repository import EventRepository
 from app.repositories.user_repository import UserRepository
 
@@ -14,7 +16,16 @@ class EventService:
         self.user_repository = UserRepository()
         self.event_repository = EventRepository()
 
-    def create_event(self, event_data):
+    def create_event(self, event_data,file):
+        file_ext = file.filename.split(".")[-1]
+        unique_id = uuid.uuid4()
+        eventImageName = str(unique_id) + "." + file_ext
+        file_path = os.path.join(current_app.config["TEAM_PHOTOS_FOLDER"], eventImageName)
+        file.save(file_path)
+        event_data['event_date'] = datetime.strptime(event_data['event_date'], '%Y-%m-%d').date()
+        event_data['start_time'] = datetime.strptime(event_data['start_time'], '%H:%M:%S').time()
+        event_data['end_time'] = datetime.strptime(event_data['end_time'], '%H:%M:%S').time()
+        event_data["event_image"] = eventImageName
         event = self.event_repository.add_event(event_data)
         return event
 
@@ -40,6 +51,13 @@ class EventService:
                 for user in event_obj.users
             ]
 
+        return jsonify(events_to_return)
+
+    def get_events_sorted_by_date(self):
+        events = self.event_repository.get_events_sorted_by_date()
+        events_to_return = [
+            {**row2dict(event)} for event in events
+        ]
         return jsonify(events_to_return)
 
     def get_event_by_id(self, event_id):
