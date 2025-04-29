@@ -90,6 +90,15 @@ def uploaded_file(filename):
     """
     return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
 
+@auth_bp.route("/uploads/team_photos/<filename>", methods=["GET"])
+def uploaded_event_photos(filename):
+    """
+    Sert un fichier téléchargé depuis le dossier d'upload.
+
+    Prend le nom du fichier en paramètre et retourne le fichier s’il existe.
+    """
+    return send_from_directory(current_app.config["TEAM_PHOTOS_FOLDER"], filename)
+
 
 @auth_bp.route("/users/profile", methods=["PUT"])
 @jwt_required()
