@@ -1,5 +1,7 @@
 import uuid
 import os
+from datetime import datetime
+
 from flask import jsonify, current_app
 from app.controllers import row2dict
 from app.models import Event
@@ -20,6 +22,9 @@ class EventService:
         eventImageName = str(unique_id) + "." + file_ext
         file_path = os.path.join(current_app.config["TEAM_PHOTOS_FOLDER"], eventImageName)
         file.save(file_path)
+        event_data['event_date'] = datetime.strptime(event_data['event_date'], '%Y-%m-%d').date()
+        event_data['start_time'] = datetime.strptime(event_data['start_time'], '%H:%M:%S').time()
+        event_data['end_time'] = datetime.strptime(event_data['end_time'], '%H:%M:%S').time()
         event_data["event_image"] = eventImageName
         event = self.event_repository.add_event(event_data)
         return event

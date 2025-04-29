@@ -6,8 +6,6 @@ services:
     container_name: flask-app
     ports:
       - "5000:5000"
-    environment:
-      - DATABASE_URL=postgresql://postgres:admin@db:5432/sportConnectBack
     depends_on:
       - db
 
