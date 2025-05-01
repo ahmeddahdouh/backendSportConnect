@@ -24,6 +24,14 @@ class EventRepository:
             .all()
         )
 
+    def get_events_sorted_by_date(self):
+        return (
+            db.session.query(Event)
+            .order_by(Event.event_date.desc())
+            .limit(4)
+            .all()
+        )
+
     def get_event_by_id(self, event_id):
         return Event.query.get(event_id)
 
@@ -47,10 +55,7 @@ class EventRepository:
         db.session.commit()
 
     def is_user_alredy_participating(self, event_id, user_id):
-        return (
-            EventUsers.query.filter_by(event_id=event_id, user_id=user_id).first()
-            is not None
-        )
+        return (EventUsers.query.filter_by(event_id=event_id, user_id=user_id).first())
 
     def add_user_to_event(self, user_id, event_id):
         new_participation = EventUsers(user_id=user_id, event_id=event_id)
