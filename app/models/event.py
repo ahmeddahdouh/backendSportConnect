@@ -8,6 +8,7 @@ class Event(db.Model):
     event_name = db.Column(db.String, nullable=False)
     event_description = db.Column(db.String(200), nullable=False)
 
+
     id_gestionnaire = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     id_sport = db.Column(db.Integer,db.ForeignKey("sports.id")),
 
