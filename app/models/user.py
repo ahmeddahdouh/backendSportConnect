@@ -1,4 +1,7 @@
 from datetime import date
+
+from sqlalchemy import ARRAY
+
 from config import db
 
 class User(db.Model):
@@ -22,6 +25,9 @@ class User(db.Model):
     profile_image = db.Column(db.String, nullable=True)
 
     events = db.relationship("Event", secondary="event_users", back_populates="users")
+
+    bibliography = db.Column(db.String, nullable=True)
+    interests  = db.Column(ARRAY(db.String), nullable=True)
 
     @property
     def age(self) -> int:
