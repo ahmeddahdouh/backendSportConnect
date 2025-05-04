@@ -2,10 +2,7 @@ name: CI/CD Flask + Postgres
 
 on:
   push:
-  pull_request:
-  merge:
-    branches: [ "24-refactor-applying-service-layer-pattern" ]
-
+    branches: [ "master" ]
 
 jobs:
   build-test:
