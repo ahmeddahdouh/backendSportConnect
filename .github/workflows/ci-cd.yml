@@ -24,42 +24,42 @@ jobs:
           --health-retries 5
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: Install dependencies
-      run: |
-        pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Run basic syntax check
-      run: |
-        python -m py_compile run.py
+      - name: Run basic syntax check
+        run: |
+          python -m py_compile run.py
 
-    - name: Build Docker image
-      run: |
-        docker build -t my-flask-app .
+      - name: Build Docker image
+        run: |
+          docker build -t my-flask-app .
 
-    - name: Set environment variables
-      run: |
-        echo "DB_USER=postgres" >> $GITHUB_ENV
-        echo "DB_PASSWORD=admin" >> $GITHUB_ENV
-        echo "DB_NAME=sportConnectBack" >> $GITHUB_ENV
+      - name: Set environment variables
+        run: |
+          echo "DB_USER=postgres" >> $GITHUB_ENV
+          echo "DB_PASSWORD=admin" >> $GITHUB_ENV
+          echo "DB_NAME=sportConnectBack" >> $GITHUB_ENV
 
-    - name: Run docker compose
-      run: |
-        docker compose up -d
-        sleep 20  # Allow time for the application to fully start
+      - name: Run docker compose
+        run: |
+          docker compose up -d
+          sleep 20
 
-    - name: Test /sport API endpoint
-      run: |
-        curl -v http://localhost:5000/sport
+      - name: Test /sport API endpoint
+        run: |
+          curl -v http://localhost:5000/sport
 
-    - name: Shutdown docker compose
-      run: |
-        docker compose down
+      - name: Shutdown docker compose
+        run: |
+          docker compose down
