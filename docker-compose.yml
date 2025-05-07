@@ -6,8 +6,20 @@ services:
     container_name: flask-app
     ports:
       - "5000:5000"
+    environment:
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=db
+      -
     depends_on:
       - db
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/sport" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 
   db:
     image: postgres:13
