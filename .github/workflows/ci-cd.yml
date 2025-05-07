@@ -60,6 +60,13 @@ jobs:
           docker compose up -d
           sleep 20
 
+      - name: Display container environment variables
+        run: |
+          echo "==== CONTAINER ENVIRONMENT VARIABLES ====" 
+          docker exec flask-app env
+          echo "==== DATABASE CONNECTION CHECK ====" 
+          docker exec flask-app sh -c "echo 'Database connectivity check:' && python -c 'import os; print(f\"Trying to connect to: {os.environ.get(\"DB_HOST\")}:{os.environ.get(\"DB_PORT\")}/{os.environ.get(\"DB_NAME\")} as {os.environ.get(\"DB_USER\")}\")'"
+
       - name: Test /sport API endpoint
         run: |
           curl -v http://localhost:5000/sport
