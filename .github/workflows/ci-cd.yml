@@ -61,4 +61,42 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
+          docker compose down -v  
+
+      # Nouvelle étape de déploiement
+      - name: Deploy to EC2
+        if: success() && github.ref == 'refs/heads/master'
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Se déplacer dans le répertoire du projet (créez-le s'il n'existe pas)
+            mkdir -p ~/app
+            cd ~/app
+
+            # Récupérer le code le plus récent
+            git pull origin master || git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git .
+
+            # Configuration des variables d'environnement dans un fichier .env
+            cat > .env << EOL
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            EOL
+
+            # Arrêter et redémarrer les services
+            docker compose down
+            docker compose up -d
+
+            # Vérifier que tout fonctionne
+            sleep 10
+            curl http://localhost:5000/sport/
+
+      - name: Cleanup
+        if: always()
+        run: |
           docker compose down -v

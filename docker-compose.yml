@@ -5,13 +5,13 @@ services:
     image: my-flask-app
     container_name: flask-app
     environment:
-      DB_USER: ${DB_USER:-postgres}          # Valeur par défaut
-      DB_PASSWORD: ${DB_PASSWORD:-admin}     # Valeur par défaut
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-admin}
       DB_NAME: ${DB_NAME:-sportConnectBack}
       DB_PORT: "5432"
       DB_HOST: db
-      SECRET_KEY: ${SECRET_KEY}              # Requis pour Flask
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}      # Si utilisé
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
     ports:
       - "5000:5000"
     healthcheck:
