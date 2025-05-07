@@ -58,7 +58,6 @@ jobs:
       - name: Test API endpoint
         run: |
           curl -v http://localhost:5000/sport/
-
       - name: Cleanup
         if: always()
         run: |
