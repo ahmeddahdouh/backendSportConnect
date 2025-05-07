@@ -52,10 +52,38 @@ jobs:
         echo "DB_NAME=sportConnectBack" >> $GITHUB_ENV
 
     - name: Run docker compose
-      run: | 
+      run: |
         docker compose up -d
-        sleep 20
+        sleep 20  # Allow time for the application to fully start
+
+    - name: Test /sport API endpoint
+      run: |
+        # Attempt to connect to the API endpoint with retry logic
+        MAX_RETRIES=5
+        RETRY_DELAY=3
+        
+        for i in $(seq 1 $MAX_RETRIES); do
+          echo "Test attempt $i of $MAX_RETRIES for /sport endpoint..."
+          
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" http://localhost:5000/sport)
+          
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ API test succeeded! Response:"
+            cat response.json
+            break
+          else
+            echo "❌ API test failed with status code: $HTTP_STATUS"
+            if [ $i -lt $MAX_RETRIES ]; then
+              echo "Retrying in $RETRY_DELAY seconds..."
+              sleep $RETRY_DELAY
+            else
+              echo "API test failed after $MAX_RETRIES attempts"
+              exit 1
+            fi
+          fi
+        done
 
     - name: Shutdown docker compose
       run: |
         docker compose down
+      if: always()  # Ensure this step runs even if previous steps fail
