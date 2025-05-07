@@ -15,7 +15,7 @@ services:
     ports:
       - "5000:5000"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/sport/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
