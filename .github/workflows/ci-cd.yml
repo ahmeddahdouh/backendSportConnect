@@ -114,7 +114,7 @@ jobs:
             SECRET_KEY=${{ secrets.SECRET_KEY }}
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
             EOL
-            
+        
             # 5. Construire et démarrer les conteneurs
             sudo docker compose down || true
             
