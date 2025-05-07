@@ -52,7 +52,7 @@ jobs:
         echo "DB_NAME=sportConnectBack" >> $GITHUB_ENV
 
     - name: Run docker compose
-      run: |
+      run: | 
         docker compose up -d
         sleep 20
 
