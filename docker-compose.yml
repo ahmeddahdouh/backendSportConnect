@@ -5,31 +5,44 @@ services:
     image: my-flask-app
     container_name: flask-app
     environment:
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER:-postgres}          # Valeur par défaut
+      DB_PASSWORD: ${DB_PASSWORD:-admin}     # Valeur par défaut
+      DB_NAME: ${DB_NAME:-sportConnectBack}  # Valeur par défaut
       DB_HOST: db
-      SECRET_KEY: ${SECRET_KEY}  # Optionnel
+      SECRET_KEY: ${SECRET_KEY}              # Requis pour Flask
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}      # Si utilisé
     ports:
       - "5000:5000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
       db:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   db:
     image: postgres:13
     container_name: postgres-db
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin}
+      POSTGRES_DB: ${DB_NAME:-sportConnectBack}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-sportConnectBack}"]
       interval: 5s
       timeout: 5s
       retries: 10
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"  # Exposé pour les tests CI
 
 volumes:
   pgdata:

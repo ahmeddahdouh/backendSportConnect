@@ -28,25 +28,31 @@ jobs:
 
       - name: Launch with Docker Compose
         env:
-          # Secrets et variables (doivent correspondre à docker-compose.yml)
           DB_USER: postgres
           DB_PASSWORD: admin
           DB_NAME: sportConnectBack
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}  # Ajouté pour cohérence
-          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}  # Ajouté pour cohérence
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
         run: |
+          # Démarrer en mode détaché mais capturer les logs
           docker compose up -d
-          sleep 15  # Attendre que les services soient prêts
+          
+          # Attendre que le conteneur Flask soit healthy
+          timeout 60 bash -c 'until docker inspect flask-app --format "{{.State.Health.Status}}" | grep healthy; do sleep 3; done' || \
+          (docker logs flask-app && exit 1)
+          
+          # Afficher les logs initiaux pour debug
+          docker logs flask-app
 
       - name: Verify environment
         run: |
           echo "=== Variables dans Flask ==="
-          docker exec flask-app sh -c 'env | grep -E "DB_|SECRET_"'
+          docker exec flask-app sh -c 'env | grep -E "DB_|SECRET_|JWT"'
           
-          echo "=== Test de connexion DB depuis Flask ==="
+          echo "=== Test de connexion DB ==="
           docker exec flask-app python -c "
           import os;
-          print(f\"DB: {os.getenv('DB_USER')}@{os.getenv('DB_HOST')}:5432/{os.getenv('DB_NAME')}\")
+          print(f\"Connexion à : postgresql://{os.getenv('DB_USER')}:****@{os.getenv('DB_HOST')}:5432/{os.getenv('DB_NAME')}\")
           "
 
       - name: Test API endpoint
@@ -56,5 +62,4 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          docker compose down
-          docker volume rm $(docker volume ls -q)
+          docker compose down -v
