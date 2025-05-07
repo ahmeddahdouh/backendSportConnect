@@ -5,7 +5,7 @@ on:
     branches: [ "master" ]
 
 jobs:
-  build-test:
+  build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -34,37 +34,39 @@ jobs:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
         run: |
-          # Démarrer en mode détaché mais capturer les logs
           docker compose up -d
-          
-          # Attendre que le conteneur Flask soit healthy
-          timeout 60 bash -c 'until docker inspect flask-app --format "{{.State.Health.Status}}" | grep healthy; do sleep 3; done' || \
-          (docker logs flask-app && exit 1)
-          
-          # Afficher les logs initiaux pour debug
+
+          # Attendre que le conteneur soit healthy
+          timeout 60 bash -c 'until docker inspect flask-app --format "{{.State.Health.Status}}" | grep -q healthy; do sleep 3; done' || {
+            docker logs flask-app
+            exit 1
+          }
+
           docker logs flask-app
 
       - name: Verify environment
         run: |
-          echo "=== Variables dans Flask ==="
-          docker exec flask-app sh -c 'env | grep -E "DB_|SECRET_|JWT"'
-          
+          echo "=== Variables d'environnement ==="
+          docker exec flask-app env | grep -E "DB_|SECRET_|JWT"
+
           echo "=== Test de connexion DB ==="
           docker exec flask-app python -c "
-          import os;
-          print(f\"Connexion à : postgresql://{os.getenv('DB_USER')}:****@{os.getenv('DB_HOST')}:5432/{os.getenv('DB_NAME')}\")
-          "
+import os;
+print(f\"Connexion à : postgresql://{os.getenv('DB_USER')}:****@{os.getenv('DB_HOST', 'localhost')}:5432/{os.getenv('DB_NAME')}\")
+"
 
       - name: Test API endpoint
         run: |
-          curl -v http://localhost:5000/sport/
+          curl -f http://localhost:5000/sport/ || {
+            echo "L'API n'est pas disponible"
+            exit 1
+          }
 
       - name: Cleanup after tests
         if: always()
         run: |
           docker compose down -v  
 
-      # Étape de déploiement avec l'URL exacte du dépôt
       - name: Deploy to EC2
         if: success() && github.ref == 'refs/heads/master'
         uses: appleboy/ssh-action@master
@@ -73,52 +75,51 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # 1. Installation des prérequis
-            sudo apt-get update || sudo yum update -y
+            set -e
             
-            # Installation de Git si nécessaire
-            which git || sudo apt-get install -y git || sudo yum install -y git
-            
-            # Installation de Docker et Docker Compose si nécessaires
-            which docker || { 
+            sudo apt-get update -y || sudo yum update -y
+
+            # Install Git
+            if ! command -v git &> /dev/null; then
+              sudo apt-get install -y git || sudo yum install -y git
+            fi
+
+            # Install Docker
+            if ! command -v docker &> /dev/null; then
               sudo apt-get install -y docker.io || sudo yum install -y docker
-              sudo systemctl start docker
               sudo systemctl enable docker
+              sudo systemctl start docker
               sudo usermod -aG docker $USER
-            }
-            
-            which docker-compose || sudo which docker-compose || {
+            fi
+
+            # Install Docker Compose
+            if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
               sudo curl -L "https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
               sudo chmod +x /usr/local/bin/docker-compose
               sudo ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
-            }
-            
-            # 2. Créer le répertoire du projet 
+            fi
+
             mkdir -p ~/app
             cd ~/app
-            
-            # 3. Cloner ou mettre à jour le dépôt avec l'URL exacte
+
             if [ -d ".git" ]; then
               git fetch --all
               git reset --hard origin/master
             else
-              # URL exacte du dépôt
               git clone https://github.com/ahmeddahdouh/backendSportConnect.git .
             fi
-            
-            # 4. Configuration des variables d'environnement
-            cat > .env << EOL
-            DB_USER=${{ secrets.DB_USER }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            DB_NAME=${{ secrets.DB_NAME }}
-            SECRET_KEY=${{ secrets.SECRET_KEY }}
-            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-            EOL
-        
-            # 5. Construire et démarrer les conteneurs
+
+            # Créer fichier .env
+            cat > .env <<EOF
+DB_USER=${{ secrets.DB_USER }}
+DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+DB_NAME=${{ secrets.DB_NAME }}
+SECRET_KEY=${{ secrets.SECRET_KEY }}
+JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+EOF
+
             sudo docker compose down || true
-            
-            # Vérifier si docker compose ou docker-compose est disponible
+
             if command -v docker-compose &> /dev/null; then
               sudo docker-compose build
               sudo docker-compose up -d
@@ -126,8 +127,7 @@ jobs:
               sudo docker compose build
               sudo docker compose up -d
             fi
-            
-            # 6. Vérifier l'état après un délai
+
             sleep 30
             sudo docker ps
-            curl -v http://localhost:5000/sport/ || echo "L'API n'est pas encore accessible"
+            curl -f http://localhost:5000/sport/ || echo "L'API n'est pas encore accessible"
