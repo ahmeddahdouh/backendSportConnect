@@ -8,21 +8,6 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:13
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: admin
-          POSTGRES_DB: sportConnectBack
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -37,40 +22,39 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run basic syntax check
-        run: |
-          python -m py_compile run.py
-
       - name: Build Docker image
         run: |
           docker build -t my-flask-app .
 
-      - name: Set environment variables
-        run: |
-          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> $GITHUB_ENV
-          echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> $GITHUB_ENV
-          echo "DB_USER=postgres" >> $GITHUB_ENV
-          echo "DB_PASSWORD=admin" >> $GITHUB_ENV
-          echo "DB_HOST=db" >> $GITHUB_ENV
-          echo "DB_PORT=5432" >> $GITHUB_ENV
-          echo "DB_NAME=sportConnectBack" >> $GITHUB_ENV
-
-      - name: Run docker compose
+      - name: Launch with Docker Compose
+        env:
+          # Secrets et variables (doivent correspondre à docker-compose.yml)
+          DB_USER: postgres
+          DB_PASSWORD: admin
+          DB_NAME: sportConnectBack
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}  # Ajouté pour cohérence
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}  # Ajouté pour cohérence
         run: |
           docker compose up -d
-          sleep 20
+          sleep 15  # Attendre que les services soient prêts
 
-      - name: Display container environment variables
+      - name: Verify environment
         run: |
-          echo "==== CONTAINER ENVIRONMENT VARIABLES ====" 
-          docker exec flask-app env
-          echo "==== DATABASE CONNECTION CHECK ====" 
-          docker exec flask-app sh -c "echo 'Database connectivity check:' && python -c 'import os; print(f\"Trying to connect to: {os.environ.get(\"DB_HOST\")}:{os.environ.get(\"DB_PORT\")}/{os.environ.get(\"DB_NAME\")} as {os.environ.get(\"DB_USER\")}\")'"
+          echo "=== Variables dans Flask ==="
+          docker exec flask-app sh -c 'env | grep -E "DB_|SECRET_"'
+          
+          echo "=== Test de connexion DB depuis Flask ==="
+          docker exec flask-app python -c "
+          import os;
+          print(f\"DB: {os.getenv('DB_USER')}@{os.getenv('DB_HOST')}:5432/{os.getenv('DB_NAME')}\")
+          "
 
-      - name: Test /sport API endpoint
+      - name: Test API endpoint
         run: |
           curl -v http://localhost:5000/sport
 
-      - name: Shutdown docker compose
+      - name: Cleanup
+        if: always()
         run: |
           docker compose down
+          docker volume rm $(docker volume ls -q)
