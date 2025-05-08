@@ -1,5 +1,5 @@
 runtime: python311
-instance_class: F1
+instance_class: F2
 
 env_variables:
   FLASK_ENV: "production"
@@ -22,8 +22,8 @@ automatic_scaling:
   max_instances: 10
 
 handlers:
-- url: /static
-  static_dir: static
+- url: /static/(.*)
+  static_dir: static/\1
   secure: always
 
 - url: /.*
