@@ -31,5 +31,5 @@ RUN mkdir -p /app/uploads/team_photos && \
 # Expose the port the app runs on
 EXPOSE ${PORT}
 
-# Run the application with gunicorn
-CMD exec gunicorn --bind :${PORT} --workers 1 --threads 8 --timeout 0 main:app
+# Run the application
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "4", "--threads", "2", "--timeout", "0", "run:app"]

@@ -161,7 +161,6 @@ jobs:
     name: Build and Deploy
     needs: [security-scan, test]
     runs-on: ubuntu-latest
-    environment: prod
 
     steps:
     - name: Checkout code
