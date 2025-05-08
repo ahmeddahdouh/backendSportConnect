@@ -1,4 +1,4 @@
-name: Deploy to Production Environment
+name: Production Deployment Pipeline
 
 on:
   push:
@@ -13,10 +13,116 @@ env:
   DB_USER: "postgres"
   DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
   DB_NAME: "sportconnect"
+  ARTIFACT_BUCKET: sportconnect-artifacts
+  RETENTION_DAYS: 30
+  MAX_VERSIONS: 5
+  CLOUD_SQL_PROXY_VERSION: v2.1.2
+  LOG_LEVEL: INFO
 
 jobs:
-  deploy:
-    name: Deploy to Production
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Run Bandit security scan
+      run: |
+        python -m pip install bandit
+        bandit -r . -f json -o bandit-results.json
+
+    - name: Upload security scan results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: bandit-results.json
+
+  build:
+    name: Build Application
+    needs: security-scan
+    runs-on: ubuntu-latest
+    outputs:
+      build_id: ${{ steps.build_id.outputs.build_id }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Generate build ID
+      id: build_id
+      run: echo "build_id=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        token_format: 'access_token'
+        create_credentials_file: true
+
+    - name: Set up gcloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+
+    - name: Cache Cloud SQL proxy
+      uses: actions/cache@v3
+      with:
+        path: cloud-sql-proxy
+        key: ${{ runner.os }}-cloud-sql-proxy-${{ env.CLOUD_SQL_PROXY_VERSION }}
+        restore-keys: |
+          ${{ runner.os }}-cloud-sql-proxy-
+
+    - name: Download Cloud SQL proxy
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/${{ env.CLOUD_SQL_PROXY_VERSION }}/cloud-sql-proxy.linux.amd64 -O cloud-sql-proxy
+        chmod +x cloud-sql-proxy
+
+    - name: Upload build artifact
+      run: |
+        # Create a temporary directory for the build
+        mkdir -p build
+        
+        # Copy files to build directory, excluding unnecessary files
+        rsync -av --exclude='.git' --exclude='.github' --exclude='__pycache__' --exclude='*.pyc' ./ build/
+        
+        # Create and upload the artifact
+        tar -czf build.tar.gz -C build .
+        gsutil cp build.tar.gz gs://${{ env.ARTIFACT_BUCKET }}/builds/${{ steps.build_id.outputs.build_id }}.tar.gz
+
+    - name: Cleanup old artifacts
+      if: always()
+      run: |
+        # Delete artifacts older than RETENTION_DAYS
+        gsutil ls -l gs://${{ env.ARTIFACT_BUCKET }}/builds/ | \
+        awk -v date="$(date -d "${{ env.RETENTION_DAYS }} days ago" +%s)" \
+        '{if ($1 != "TOTAL:" && $2 < date) print $NF}' | \
+        while read -r file; do
+          gsutil rm "$file"
+        done
+
+  test:
+    name: Run Tests and Quality Checks
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
@@ -31,18 +137,56 @@ jobs:
 
     - name: Install dependencies
       run: |
+        python -m venv venv
+        source venv/bin/activate
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install pytest pytest-cov flake8 black mypy
 
+    - name: Run linting
+      run: |
+        source venv/bin/activate
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        black . --check
+
+    - name: Run type checking
+      run: |
+        source venv/bin/activate
+        mypy .
+
+    - name: Run tests with coverage
+      run: |
+        source venv/bin/activate
+        python -m pytest --cov=. --cov-report=xml
+
+    - name: Upload coverage report
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: true
+
+  deploy:
+    name: Deploy to Production
+    needs: [build, test]
+    runs-on: ubuntu-latest
+
+    steps:
     - name: Set up Cloud SDK
       uses: google-github-actions/auth@v1
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
+        token_format: 'access_token'
+        create_credentials_file: true
 
     - name: Set up gcloud CLI
       uses: google-github-actions/setup-gcloud@v1
       with:
         project_id: ${{ env.PROJECT_ID }}
+
+    - name: Download build artifact
+      run: |
+        gsutil cp gs://${{ env.ARTIFACT_BUCKET }}/builds/${{ needs.build.outputs.build_id }}.tar.gz .
+        tar -xzf ${{ needs.build.outputs.build_id }}.tar.gz
 
     - name: Get instance connection name
       id: get-connection-name
@@ -50,11 +194,9 @@ jobs:
         echo "INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(connectionName)')" >> $GITHUB_ENV
 
     - name: Run database migrations
+      env:
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       run: |
-        # Run migrations using Cloud SQL Auth proxy
-        wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.1.2/cloud-sql-proxy.linux.amd64 -O cloud-sql-proxy
-        chmod +x cloud-sql-proxy
-        
         # Start Cloud SQL Auth proxy in the background
         ./cloud-sql-proxy "$INSTANCE_CONNECTION_NAME" --port 5432 &
         
@@ -69,5 +211,67 @@ jobs:
         alembic upgrade head
 
     - name: Deploy to App Engine
+      id: deploy
       run: |
-        gcloud app deploy app.yaml --project ${{ env.PROJECT_ID }} --version prod --verbosity=debug 
+        gcloud app deploy app.yaml --project ${{ env.PROJECT_ID }} --version ${{ needs.build.outputs.build_id }} --verbosity=debug 
+
+    - name: Verify deployment
+      run: |
+        # Wait for deployment to be ready
+        sleep 30
+        
+        # Check if the service is responding
+        SERVICE_URL=$(gcloud app services describe ${{ env.SERVICE_NAME }} --format='value(defaultUrl)')
+        if curl -s -f "$SERVICE_URL/health" > /dev/null; then
+          echo "✅ Service is healthy"
+        else
+          echo "❌ Service health check failed"
+          exit 1
+        fi
+
+    - name: Monitor deployment
+      run: |
+        # Get deployment logs
+        echo "📊 Deployment Logs:"
+        gcloud app logs read --project ${{ env.PROJECT_ID }} --service ${{ env.SERVICE_NAME }} --limit=50
+        
+        # Get service status
+        echo "📈 Service Status:"
+        gcloud app services describe ${{ env.SERVICE_NAME }} --project ${{ env.PROJECT_ID }} --format="table(
+          name,
+          split.status,
+          traffic.split
+        )"
+
+    - name: Cleanup old App Engine versions
+      if: always()
+      run: |
+        # Get list of versions sorted by creation time (newest first)
+        versions=$(gcloud app versions list --format="value(version.id)" --sort-by=~createTime)
+        
+        # Keep only the most recent MAX_VERSIONS
+        count=0
+        for version in $versions; do
+          count=$((count + 1))
+          if [ $count -gt ${{ env.MAX_VERSIONS }} ]; then
+            gcloud app versions delete $version --quiet
+          fi
+        done
+
+    - name: Cleanup temporary files
+      if: always()
+      run: |
+        rm -rf build/ build.tar.gz cloud-sql-proxy
+
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Production deployment completed successfully"
+          echo "Service URL: $(gcloud app services describe ${{ env.SERVICE_NAME }} --format='value(defaultUrl)')"
+          echo "Deployment Version: ${{ needs.build.outputs.build_id }}"
+          echo "View logs: https://console.cloud.google.com/appengine/versions?project=${{ env.PROJECT_ID }}"
+        else
+          echo "❌ Production deployment failed"
+          echo "Check the logs for more details: https://console.cloud.google.com/appengine/versions?project=${{ env.PROJECT_ID }}"
+          exit 1 
