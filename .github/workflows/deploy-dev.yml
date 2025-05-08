@@ -47,7 +47,6 @@ jobs:
         echo "Scan completed. Results saved to bandit-results.json"
 
     - name: Convert to SARIF format
-      if: steps.bandit.outcome == 'failure'
       run: |
         # Create SARIF structure
         cat > sarif-results.json << EOF
@@ -69,7 +68,7 @@ jobs:
         }
         EOF
 
-        # Convert Bandit results to SARIF format
+        # Convert Bandit results to SARIF format if issues were found
         if [ -f bandit-results.json ]; then
           jq -r '.results[] | {
             "ruleId": "BANDIT-\(.test_id)",
