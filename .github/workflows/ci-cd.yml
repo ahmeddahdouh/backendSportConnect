@@ -5,7 +5,14 @@ on:
     branches: [ "master" ]
 
 jobs:
-  build-test-deploy:
+  build-  timeout 60 bash -c "
+    until docker inspect flask-app --format '{{.State.Health.Status}}' 2>/dev/null | grep -q healthy; do
+    sleep 3
+    done
+    " || {
+    docker logs flask-app
+    exit 1
+    }-deploy:
     runs-on: ubuntu-latest
 
     steps:
