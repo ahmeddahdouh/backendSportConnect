@@ -240,11 +240,6 @@ jobs:
         source venv/bin/activate
         python -m pytest --cov=. --cov-report=term-missing
 
-    - name: Upload coverage report
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: true
 
   deploy:
     name: Deploy to Production
