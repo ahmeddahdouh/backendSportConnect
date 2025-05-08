@@ -2,8 +2,6 @@ version: '3.8'
 
 services:
   web:
-    build:
-      context: .  # Assure la construction locale
     image: my-flask-app
     container_name: flask-app
     environment:
@@ -12,8 +10,8 @@ services:
       DB_NAME: ${DB_NAME:-sportConnectBack}
       DB_PORT: "5432"
       DB_HOST: db
-      SECRET_KEY: ${SECRET_KEY:-default_secret}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-default_jwt_secret}
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
     ports:
       - "5000:5000"
     healthcheck:
@@ -22,7 +20,8 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
-      - db   # Suppression de `condition` pour éviter l'erreur de compatibilité
+      db:
+        condition: service_healthy
     logging:
       driver: json-file
       options:
@@ -37,8 +36,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-admin}
       POSTGRES_DB: ${DB_NAME:-sportConnectBack}
     healthcheck:
-      test:
-        ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-sportConnectBack} || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-sportConnectBack}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -46,11 +44,6 @@ services:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"  # Exposé pour les tests CI
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
 
 volumes:
   pgdata:
