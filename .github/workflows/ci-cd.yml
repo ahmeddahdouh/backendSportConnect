@@ -9,125 +9,126 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
 
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
 
-      - name: Build Docker image
-        run: |
-          docker build -t my-flask-app .
+    - name: Build Docker image
+      run: |
+        docker build -t my-flask-app .
 
-      - name: Launch with Docker Compose
-        env:
-          DB_USER: postgres
-          DB_PASSWORD: admin
-          DB_NAME: sportConnectBack
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-        run: |
-          docker compose up -d
+    - name: Launch with Docker Compose
+      env:
+        DB_USER: postgres
+        DB_PASSWORD: admin
+        DB_NAME: sportConnectBack
+        DB_HOST: localhost
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+      run: |
+        docker compose up -d
 
-          # Attendre que le conteneur soit healthy
-          timeout 60 bash -c 'until docker inspect flask-app --format "{{.State.Health.Status}}" | grep -q healthy; do sleep 3; done' || {
-            docker logs flask-app
-            exit 1
-          }
+        echo "⏳ Attente que le conteneur devienne healthy..."
+        CONTAINER_ID=$(docker ps --filter "name=flask" --format "{{.ID}}")
+        timeout 60 bash -c 'until [[ "$(docker inspect -f "{{.State.Health.Status}}" $CONTAINER_ID 2>/dev/null)" == "healthy" ]]; do sleep 3; done' || {
+          echo "❌ Conteneur non healthy"
+          docker logs $CONTAINER_ID
+          exit 1
+        }
 
-          docker logs flask-app
+        docker logs $CONTAINER_ID
 
-      - name: Verify environment
-        run: |
-          echo "=== Variables d'environnement ==="
-          docker exec flask-app env | grep -E "DB_|SECRET_|JWT"
+    - name: Verify environment
+      run: |
+        echo "=== Variables d'environnement ==="
+        docker exec $(docker ps -qf "name=flask") env | grep -E "DB_|SECRET_|JWT"
 
-          echo "=== Test de connexion DB ==="
-          docker exec flask-app python -c "
+        echo "=== Test de connexion DB ==="
+        docker exec $(docker ps -qf "name=flask") python -c "
 import os;
-print(f\"Connexion à : postgresql://{os.getenv('DB_USER')}:****@{os.getenv('DB_HOST', 'localhost')}:5432/{os.getenv('DB_NAME')}\")
+print(f\"Connexion à : postgresql://{os.getenv('DB_USER')}:****@{os.getenv('DB_HOST')}:5432/{os.getenv('DB_NAME')}\")
 "
 
-      - name: Test API endpoint
-        run: |
-          curl -f http://localhost:5000/sport/ || {
-            echo "L'API n'est pas disponible"
-            exit 1
-          }
+    - name: Test API endpoint
+      run: |
+        curl -f http://localhost:5000/sport/ || {
+          echo "❌ L'API n'est pas disponible"
+          exit 1
+        }
 
-      - name: Cleanup after tests
-        if: always()
-        run: |
-          docker compose down -v  
+    - name: Cleanup after tests
+      if: always()
+      run: |
+        docker compose down -v
 
-      - name: Deploy to EC2
-        if: success() && github.ref == 'refs/heads/master'
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-            
-            sudo apt-get update -y || sudo yum update -y
+    - name: Deploy to EC2
+      if: success() && github.ref == 'refs/heads/master'
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          set -e
 
-            # Install Git
-            if ! command -v git &> /dev/null; then
-              sudo apt-get install -y git || sudo yum install -y git
-            fi
+          sudo apt-get update -y || sudo yum update -y
 
-            # Install Docker
-            if ! command -v docker &> /dev/null; then
-              sudo apt-get install -y docker.io || sudo yum install -y docker
-              sudo systemctl enable docker
-              sudo systemctl start docker
-              sudo usermod -aG docker $USER
-            fi
+          if ! command -v git &>/dev/null; then
+            sudo apt-get install -y git || sudo yum install -y git
+          fi
 
-            # Install Docker Compose
-            if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-              sudo curl -L "https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-              sudo chmod +x /usr/local/bin/docker-compose
-              sudo ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
-            fi
+          if ! command -v docker &>/dev/null; then
+            sudo apt-get install -y docker.io || sudo yum install -y docker
+            sudo systemctl enable docker
+            sudo systemctl start docker
+            sudo usermod -aG docker $USER
+          fi
 
-            mkdir -p ~/app
-            cd ~/app
+          if ! command -v docker-compose &>/dev/null && ! docker compose version &>/dev/null; then
+            sudo curl -L "https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+            sudo ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
+          fi
 
-            if [ -d ".git" ]; then
-              git fetch --all
-              git reset --hard origin/master
-            else
-              git clone https://github.com/ahmeddahdouh/backendSportConnect.git .
-            fi
+          mkdir -p ~/app
+          cd ~/app
 
-            # Créer fichier .env
-            cat > .env <<EOF
+          if [ -d ".git" ]; then
+            git fetch --all
+            git reset --hard origin/master
+          else
+            git clone https://github.com/ahmeddahdouh/backendSportConnect.git .
+          fi
+
+          cat > .env <<EOF
 DB_USER=${{ secrets.DB_USER }}
 DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 DB_NAME=${{ secrets.DB_NAME }}
+DB_HOST=localhost
 SECRET_KEY=${{ secrets.SECRET_KEY }}
 JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
 EOF
 
-            sudo docker compose down || true
+          sudo docker compose down || true
 
-            if command -v docker-compose &> /dev/null; then
-              sudo docker-compose build
-              sudo docker-compose up -d
-            else
-              sudo docker compose build
-              sudo docker compose up -d
-            fi
+          if command -v docker-compose &>/dev/null; then
+            sudo docker-compose build
+            sudo docker-compose up -d
+          else
+            sudo docker compose build
+            sudo docker compose up -d
+          fi
 
-            sleep 30
-            sudo docker ps
-            curl -f http://localhost:5000/sport/ || echo "L'API n'est pas encore accessible"
+          sleep 30
+          sudo docker ps
+          curl -f http://localhost:5000/sport/ || echo "⚠️ L'API n'est pas encore accessible"
+
