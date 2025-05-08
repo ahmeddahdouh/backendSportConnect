@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -257,10 +258,13 @@ jobs:
 
   deploy:
     name: Deploy to Production
-    needs: [build, test]
+    needs: [security-scan, test]
     runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
     - name: Set up Cloud SDK
       uses: google-github-actions/auth@v1
       with:
@@ -273,125 +277,53 @@ jobs:
       with:
         project_id: ${{ env.PROJECT_ID }}
 
-    - name: Download build artifact
-      run: |
-        gsutil cp gs://${{ env.ARTIFACT_BUCKET }}/builds/${{ needs.build.outputs.build_id }}.tar.gz .
-        tar -xzf ${{ needs.build.outputs.build_id }}.tar.gz
+    - name: Configure Docker
+      run: gcloud auth configure-docker
 
-    - name: Get instance connection name
-      id: get-connection-name
+    - name: Build and Push Container
       run: |
-        # First, verify the instance exists and we have permissions
-        echo "Checking instance: ${{ env.DB_INSTANCE }}"
-        gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(name,connectionName)' || {
-          echo "❌ Failed to get instance details"
-          echo "Checking service account permissions..."
-          gcloud projects get-iam-policy ${{ env.PROJECT_ID }} --format='table(bindings.role,bindings.members)' | grep -i sql
-          exit 1
-        }
-        
-        # Get and set the connection name with explicit format
-        CONNECTION_NAME="${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE }}"
-        echo "Connection name: $CONNECTION_NAME"
-        
-        if [ -z "$CONNECTION_NAME" ]; then
-          echo "❌ Connection name is empty"
-          exit 1
-        fi
-        
-        echo "INSTANCE_CONNECTION_NAME=$CONNECTION_NAME" >> $GITHUB_ENV
-        echo "Connection name set to: $INSTANCE_CONNECTION_NAME"
+        docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
+        docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
 
-    - name: Prepare app.yaml
+    - name: Deploy to Cloud Run
       run: |
-        # Debug: Show original app.yaml
-        echo "Original app.yaml:"
-        cat app.yaml
-        
-        # Replace variables in app.yaml with explicit values
-        sed -i "s|\${DB_PASSWORD}|${{ secrets.DB_PASSWORD }}|g" app.yaml
-        sed -i "s|\${INSTANCE_CONNECTION_NAME}|${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE }}|g" app.yaml
-        sed -i "s|\${JWT_SECRET_KEY}|${{ secrets.JWT_SECRET_KEY }}|g" app.yaml
-        
-        # Debug: Show modified app.yaml
-        echo "Modified app.yaml:"
-        cat app.yaml
+        gcloud run deploy ${{ env.SERVICE_NAME }} \
+          --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --platform managed \
+          --region ${{ env.REGION }} \
+          --allow-unauthenticated \
+          --set-env-vars="FLASK_ENV=production,FLASK_DEBUG=false,LOG_LEVEL=${{ env.LOG_LEVEL }}" \
+          --set-secrets="DB_PASSWORD=db-credentials:password,JWT_SECRET_KEY=jwt-secret:secret" \
+          --add-cloudsql-instances ${{ env.DB_INSTANCE }} \
+          --memory 1Gi \
+          --cpu 2 \
+          --min-instances 2 \
+          --max-instances 20 \
+          --port 8080 \
+          --concurrency 80 \
+          --timeout 300s \
+          --cpu-throttling \
+          --execution-environment gen2
 
-    - name: Verify Cloud SQL connection
-      run: |
-        echo "Verifying Cloud SQL connection..."
-        gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(connectionName,state)' || {
-          echo "❌ Failed to verify Cloud SQL instance"
-          exit 1
-        }
-
-    - name: Run database migrations
-      env:
-        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      run: |
-        # Start Cloud SQL Auth proxy in the background
-        ./cloud-sql-proxy "$INSTANCE_CONNECTION_NAME" --port 5432 &
-        
-        # Wait for the proxy to start
-        sleep 5
-        
-        # Set environment variables for Alembic
-        export DB_HOST="localhost"
-        export DB_PORT="5432"
-        
-        # Install alembic
-        python -m pip install -r requirements.txt
-        
-        # Run migrations
-        alembic upgrade head
-
-    - name: Deploy to App Engine
-      id: deploy
-      run: |
-        gcloud app deploy app.yaml --project ${{ env.PROJECT_ID }} --version ${{ needs.build.outputs.build_id }} --verbosity=debug
-
-    - name: Verify deployment
+    - name: Verify Deployment
       run: |
         # Wait for deployment to be ready
         sleep 30
         
-        # Check if the service is responding
-        SERVICE_URL=$(gcloud app services describe ${{ env.SERVICE_NAME }} --format='value(defaultUrl)')
-        if curl -s -f "$SERVICE_URL/health" > /dev/null; then
-          echo "✅ Service is healthy"
-        else
-          echo "❌ Service health check failed"
-          exit 1
-        fi
-
-    - name: Monitor deployment
-      run: |
-        # Get deployment logs
-        echo "📊 Deployment Logs:"
-        gcloud app logs read --project ${{ env.PROJECT_ID }} --service ${{ env.SERVICE_NAME }} --limit=50
+        # Get the service URL
+        SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+          --platform managed \
+          --region ${{ env.REGION }} \
+          --format 'value(status.url)')
         
-        # Get service status
-        echo "📈 Service Status:"
-        gcloud app services describe ${{ env.SERVICE_NAME }} --project ${{ env.PROJECT_ID }} --format="table(
-          name,
-          split.status,
-          traffic.split
-        )"
+        # Test the service
+        curl -f $SERVICE_URL/sport/ || exit 1
 
-    - name: Cleanup old App Engine versions
-      if: always()
+    - name: Update Latest Tag
       run: |
-        # Get list of versions sorted by creation time (newest first)
-        versions=$(gcloud app versions list --format="value(version.id)" --sort-by=~createTime)
-        
-        # Keep only the most recent MAX_VERSIONS
-        count=0
-        for version in $versions; do
-          count=$((count + 1))
-          if [ $count -gt ${{ env.MAX_VERSIONS }} ]; then
-            gcloud app versions delete $version --quiet
-          fi
-        done
+        docker tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+        docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
 
     - name: Cleanup temporary files
       if: always()
@@ -404,7 +336,7 @@ jobs:
         if [ "${{ job.status }}" = "success" ]; then
           echo "✅ Production deployment completed successfully"
           echo "Service URL: $(gcloud app services describe ${{ env.SERVICE_NAME }} --format='value(defaultUrl)')"
-          echo "Deployment Version: ${{ needs.build.outputs.build_id }}"
+          echo "Deployment Version: ${{ github.sha }}"
           echo "View logs: https://console.cloud.google.com/appengine/versions?project=${{ env.PROJECT_ID }}"
         else
           echo "❌ Production deployment failed"

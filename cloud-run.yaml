@@ -1,0 +1,51 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: sportconnect-backend
+spec:
+  template:
+    spec:
+      containers:
+        - image: gcr.io/${PROJECT_ID}/sportconnect-backend
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FLASK_ENV
+              value: "production"
+            - name: FLASK_DEBUG
+              value: "false"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            - name: DB_HOST
+              value: "/cloudsql/${INSTANCE_CONNECTION_NAME}"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "sportconnect"
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: secret
+          resources:
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+          volumeMounts:
+            - name: cloud-sql
+              mountPath: /cloudsql
+      volumes:
+        - name: cloud-sql
+          csi:
+            driver: "cloudsql"
+            fsType: "ext4"
+            volumeAttributes:
+              instanceConnectionName: ${INSTANCE_CONNECTION_NAME} 
