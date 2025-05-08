@@ -10,6 +10,9 @@ env:
   SERVICE_NAME: prod-backend
   REGION: europe-west1
   DB_INSTANCE: ${{ secrets.DB_INSTANCE_PROD }}
+  DB_USER: "postgres"
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  DB_NAME: "sportconnect"
 
 jobs:
   deploy:
@@ -58,6 +61,10 @@ jobs:
         
         # Wait for the proxy to start
         sleep 5
+        
+        # Set environment variables for Alembic
+        export DB_HOST="localhost"
+        export DB_PORT="5432"
         
         # Run migrations
         alembic upgrade head
