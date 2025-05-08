@@ -269,6 +269,19 @@ jobs:
       id: get-connection-name
       run: |
         echo "INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(connectionName)')" >> $GITHUB_ENV
+        echo "Connection name set to: $INSTANCE_CONNECTION_NAME"
+
+    - name: Prepare app.yaml
+      run: |
+        # Replace variables in app.yaml
+        sed -i "s|\${DB_PASSWORD}|${{ secrets.DB_PASSWORD }}|g" app.yaml
+        sed -i "s|\${INSTANCE_CONNECTION_NAME}|${{ env.INSTANCE_CONNECTION_NAME }}|g" app.yaml
+        sed -i "s|\${JWT_SECRET_KEY}|${{ secrets.JWT_SECRET_KEY }}|g" app.yaml
+
+    - name: Debug app.yaml
+      run: |
+        echo "Current app.yaml contents:"
+        cat app.yaml
 
     - name: Run database migrations
       env:
@@ -293,7 +306,7 @@ jobs:
     - name: Deploy to App Engine
       id: deploy
       run: |
-        gcloud app deploy app.yaml --project ${{ env.PROJECT_ID }} --version ${{ needs.build.outputs.build_id }} --verbosity=debug 
+        gcloud app deploy app.yaml --project ${{ env.PROJECT_ID }} --version ${{ needs.build.outputs.build_id }} --verbosity=debug
 
     - name: Verify deployment
       run: |
