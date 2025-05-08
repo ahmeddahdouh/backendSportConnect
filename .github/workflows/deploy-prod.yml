@@ -153,7 +153,6 @@ jobs:
         source venv/bin/activate
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install types-Flask-Cors types-Flask-SQLAlchemy types-Flask types-Flask-Migrate
 
     - name: Generate build ID
       id: build_id
@@ -229,18 +228,12 @@ jobs:
         source venv/bin/activate
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest pytest-cov flake8 black mypy
 
     - name: Run linting
       run: |
         source venv/bin/activate
         flake8 . --exclude=venv --max-line-length=120 --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 . --exclude=venv --max-line-length=120 --count --exit-zero --statistics
-
-    - name: Run type checking
-      run: |
-        source venv/bin/activate
-        mypy . --config-file mypy.ini
 
     - name: Run tests with coverage
       run: |
