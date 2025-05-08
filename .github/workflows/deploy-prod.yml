@@ -53,7 +53,7 @@ jobs:
       run: |
         if [ -f bandit-results.json ]; then
           echo "Security issues found. Review the results below:"
-          cat bandit-results.json
+          jq -r '.results[] | "File: \(.filename)\nIssue: \(.issue_text)\nSeverity: \(.issue_severity)\nConfidence: \(.issue_confidence)\nLine: \(.line_number)\n"' bandit-results.json
           exit 1
         else
           echo "No security issues found"
