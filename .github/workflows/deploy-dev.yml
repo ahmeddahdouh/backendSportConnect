@@ -268,15 +268,39 @@ jobs:
     - name: Get instance connection name
       id: get-connection-name
       run: |
-        echo "INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(connectionName)')" >> $GITHUB_ENV
+        # First, verify the instance exists
+        echo "Checking instance: ${{ env.DB_INSTANCE }}"
+        gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(name,connectionName)' || {
+          echo "❌ Failed to get instance details"
+          exit 1
+        }
+        
+        # Get and set the connection name
+        CONNECTION_NAME=$(gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(connectionName)')
+        echo "Connection name: $CONNECTION_NAME"
+        
+        if [ -z "$CONNECTION_NAME" ]; then
+          echo "❌ Connection name is empty"
+          exit 1
+        fi
+        
+        echo "INSTANCE_CONNECTION_NAME=$CONNECTION_NAME" >> $GITHUB_ENV
         echo "Connection name set to: $INSTANCE_CONNECTION_NAME"
 
     - name: Prepare app.yaml
       run: |
+        # Debug: Show original app.yaml
+        echo "Original app.yaml:"
+        cat app.yaml
+        
         # Replace variables in app.yaml
         sed -i "s|\${DB_PASSWORD}|${{ secrets.DB_PASSWORD }}|g" app.yaml
         sed -i "s|\${INSTANCE_CONNECTION_NAME}|${{ env.INSTANCE_CONNECTION_NAME }}|g" app.yaml
         sed -i "s|\${JWT_SECRET_KEY}|${{ secrets.JWT_SECRET_KEY }}|g" app.yaml
+        
+        # Debug: Show modified app.yaml
+        echo "Modified app.yaml:"
+        cat app.yaml
 
     - name: Debug app.yaml
       run: |
