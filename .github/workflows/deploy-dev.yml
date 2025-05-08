@@ -151,7 +151,7 @@ jobs:
         source venv/bin/activate
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install flake8 pytest pytest-cov black mypy
+        pip install types-Flask-Cors types-Flask-SQLAlchemy types-Flask types-Flask-Login types-Flask-Migrate
 
     - name: Generate build ID
       id: build_id
@@ -227,7 +227,7 @@ jobs:
     - name: Run type checking
       run: |
         source venv/bin/activate
-        mypy .
+        mypy . --config-file mypy.ini
 
     - name: Run tests with coverage
       run: |
