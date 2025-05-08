@@ -283,6 +283,9 @@ jobs:
         export DB_HOST="localhost"
         export DB_PORT="5432"
         
+        # Install alembic
+        python -m pip install alembic
+        
         # Run migrations
         alembic upgrade head
 
@@ -342,7 +345,7 @@ jobs:
     - name: Notify deployment status
       if: always()
       run: |
-        if [ "${{ job.status }}" == "success" ]; then
+        if [ "${{ job.status }}" = "success" ]; then
           echo "✅ Production deployment completed successfully"
           echo "Service URL: $(gcloud app services describe ${{ env.SERVICE_NAME }} --format='value(defaultUrl)')"
           echo "Deployment Version: ${{ needs.build.outputs.build_id }}"
