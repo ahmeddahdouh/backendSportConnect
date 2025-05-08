@@ -158,81 +158,67 @@ jobs:
     name: Build and Deploy
     needs: [security-scan, test]
     runs-on: ubuntu-latest
-
+    environment: dev
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Cloud SDK
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
-        token_format: 'access_token'
-        create_credentials_file: true
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Set up gcloud CLI
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        project_id: ${{ env.PROJECT_ID }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          install_components: 'gke-gcloud-auth-plugin'
 
-    - name: Configure Docker
-      run: gcloud auth configure-docker
+      - name: Configure Docker
+        run: gcloud auth configure-docker europe-west1-docker.pkg.dev
 
-    - name: Build and Push Container
-      run: |
-        # Build the container
-        docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
-        docker tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-          gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
-        
-        # Push both tags
-        docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-        docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+      - name: Build and Push Container
+        run: |
+          docker build -t europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }} .
+          docker push europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }}
+          docker tag europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }} europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:latest
+          docker push europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:latest
 
-    - name: Deploy to Cloud Run
-      run: |
-        gcloud run deploy ${{ env.SERVICE_NAME }} \
-          --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-          --platform managed \
-          --region ${{ env.REGION }} \
-          --allow-unauthenticated \
-          --set-env-vars="FLASK_ENV=development,FLASK_DEBUG=true,LOG_LEVEL=${{ env.LOG_LEVEL }}" \
-          --set-secrets="DB_PASSWORD=db-credentials:password,JWT_SECRET_KEY=jwt-secret:secret" \
-          --add-cloudsql-instances ${{ env.DB_INSTANCE }} \
-          --memory 512Mi \
-          --cpu 1 \
-          --min-instances 1 \
-          --max-instances 5 \
-          --port 8080 \
-          --concurrency 40 \
-          --timeout 300s \
-          --cpu-throttling \
-          --execution-environment gen2
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy dev-backend \
+            --image europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }} \
+            --platform managed \
+            --region europe-west1 \
+            --allow-unauthenticated \
+            --set-env-vars="FLASK_ENV=development,FLASK_DEBUG=true,LOG_LEVEL=DEBUG,DB_HOST=34.140.21.30,DB_PORT=5432,DB_NAME=sportconnect,DB_USER=postgres" \
+            --set-secrets="DB_PASSWORD=db-credentials:latest,JWT_SECRET_KEY=jwt-secret:latest" \
+            --add-cloudsql-instances sportconnect-dev \
+            --memory 512Mi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 2 \
+            --port 8080 \
+            --concurrency 40 \
+            --timeout 300s \
+            --cpu-throttling \
+            --execution-environment gen2
 
-    - name: Verify Deployment
-      run: |
-        # Wait for deployment to be ready
-        sleep 30
-        
-        # Get the service URL
-        SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
-          --platform managed \
-          --region ${{ env.REGION }} \
-          --format 'value(status.url)')
-        
-        # Test the service
-        curl -f $SERVICE_URL/sport/ || exit 1
+      - name: Verify Deployment
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 30
+          SERVICE_URL=$(gcloud run services describe dev-backend --platform managed --region europe-west1 --format 'value(status.url)')
+          curl -f $SERVICE_URL/sport/ || true
 
-    - name: Notify deployment status
-      if: always()
-      run: |
-        if [ "${{ job.status }}" = "success" ]; then
-          echo "✅ Development deployment completed successfully"
-          echo "Service URL: $SERVICE_URL"
-          echo "Deployment Version: ${{ github.sha }}"
-          echo "View logs: https://console.cloud.google.com/run/detail/${{ env.REGION }}/${{ env.SERVICE_NAME }}/logs?project=${{ env.PROJECT_ID }}"
-        else
-          echo "❌ Development deployment failed"
-          echo "Check the logs for more details: https://console.cloud.google.com/run/detail/${{ env.REGION }}/${{ env.SERVICE_NAME }}/logs?project=${{ env.PROJECT_ID }}"
-          exit 1
-        fi 
+      - name: Notify deployment status
+        if: always()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: deployments
+          SLACK_COLOR: ${{ job.status }}
+          SLACK_TITLE: Development Deployment
+          SLACK_MESSAGE: 'Deployment to development ${{ job.status }}'
+          SLACK_FOOTER: 'Triggered by ${{ github.actor }}' 
