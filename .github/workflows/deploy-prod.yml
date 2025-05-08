@@ -45,7 +45,7 @@ jobs:
       continue-on-error: true
       run: |
         source venv/bin/activate
-        bandit -r . -f json -o bandit-results.json -ll -ii
+        bandit -r . -f json -o bandit-results.json -ll -ii -x "venv/*,*/venv/*,*/site-packages/*,*/dist-packages/*"
         echo "Scan completed. Results saved to bandit-results.json"
 
     - name: Check Bandit results
