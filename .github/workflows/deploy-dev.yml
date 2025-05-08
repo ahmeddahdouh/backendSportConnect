@@ -47,8 +47,7 @@ jobs:
     - name: Get instance connection name
       id: get-connection-name
       run: |
-        INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(connectionName)')
-        echo "INSTANCE_CONNECTION_NAME=$INSTANCE_CONNECTION_NAME" >> $GITHUB_ENV
+        echo "INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(connectionName)')" >> $GITHUB_ENV
 
     - name: Run database migrations
       run: |
@@ -57,7 +56,7 @@ jobs:
         chmod +x cloud-sql-proxy
         
         # Start Cloud SQL Auth proxy in the background
-        ./cloud-sql-proxy ${{ env.INSTANCE_CONNECTION_NAME }} --port 5432 &
+        ./cloud-sql-proxy "$INSTANCE_CONNECTION_NAME" --port 5432 &
         
         # Wait for the proxy to start
         sleep 5
