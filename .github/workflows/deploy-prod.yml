@@ -213,8 +213,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    - name: Set up Cloud SDK
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        token_format: 'access_token'
+        create_credentials_file: true
+
+    - name: Set up gcloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+
+    - name: Download build artifact
+      run: |
+        gsutil cp gs://${{ env.ARTIFACT_BUCKET }}/builds/${{ needs.build.outputs.build_id }}.tar.gz .
+        tar -xzf ${{ needs.build.outputs.build_id }}.tar.gz
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -228,6 +242,7 @@ jobs:
         source venv/bin/activate
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install pytest pytest-cov flake8 black mypy
 
     - name: Run linting
       run: |
@@ -239,7 +254,6 @@ jobs:
       run: |
         source venv/bin/activate
         python -m pytest --cov=. --cov-report=term-missing
-
 
   deploy:
     name: Deploy to Production
