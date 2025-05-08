@@ -130,6 +130,9 @@ jobs:
               COMPOSE="docker-compose"
             fi
 
+            sudo $COMPOSE build --no-cache
+            sudo $COMPOSE up -d
+
             # Construire et démarrer les conteneurs
             sudo $COMPOSE build
             sudo $COMPOSE up -d
