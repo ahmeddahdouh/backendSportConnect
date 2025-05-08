@@ -70,4 +70,4 @@ jobs:
 
     - name: Deploy to App Engine
       run: |
-        gcloud app deploy app.yaml --project ${{ env.PROJECT_ID }} --version prod --quiet 
+        gcloud app deploy app.yaml --project ${{ env.PROJECT_ID }} --version prod --verbosity=debug 
