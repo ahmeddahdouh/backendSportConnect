@@ -33,6 +33,7 @@ jobs:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
         run: |
+          # Docker Compose operations
           docker compose up -d
 
           echo "Waiting for container to become healthy..."
@@ -45,6 +46,7 @@ jobs:
             exit 1
           }
 
+          # Logs
           docker logs flask-app
 
       - name: Verify environment
@@ -81,10 +83,12 @@ jobs:
 
             sudo apt-get update -y || sudo yum update -y
 
+            # Vérification et installation de Git
             if ! command -v git &> /dev/null; then
               sudo apt-get install -y git || sudo yum install -y git
             fi
 
+            # Vérification et installation de Docker
             if ! command -v docker &> /dev/null; then
               sudo apt-get install -y docker.io || sudo yum install -y docker
               sudo systemctl enable docker
@@ -92,6 +96,7 @@ jobs:
               sudo usermod -aG docker $USER
             fi
 
+            # Vérification de Docker Compose (Standalone ou Plugin)
             if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
               sudo curl -L "https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
               sudo chmod +x /usr/local/bin/docker-compose
@@ -106,6 +111,7 @@ jobs:
             git clone https://github.com/ahmeddahdouh/backendSportConnect.git backendSportConnect
             cd backendSportConnect
 
+            # Génération du fichier .env
             cat > .env <<EOF
             DB_USER=${{ secrets.DB_USER }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
@@ -114,18 +120,25 @@ jobs:
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
             EOF
 
+            # Arrêter les conteneurs existants s'ils existent
             sudo docker compose down || true
 
+            # Utilisation correcte de docker-compose ou docker compose
             if docker compose version &> /dev/null; then
               COMPOSE="docker compose"
-            
             else
-            COMPOSE="docker-compose"
+              COMPOSE="docker-compose"
             fi
 
+            # Construire et démarrer les conteneurs
             sudo $COMPOSE build
             sudo $COMPOSE up -d
 
+            # Ajout de délai pour garantir que les services sont prêts
             sleep 30
+
+            # Afficher les conteneurs en cours d'exécution
             sudo docker ps
+
+            # Vérification d'accessibilité de l'API
             curl -f http://localhost:5000/sport/ || echo "API is not yet accessible"
