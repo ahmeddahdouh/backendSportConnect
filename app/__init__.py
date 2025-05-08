@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, jsonify
 from flask_jwt_extended import JWTManager
 from app.controllers.team_routes import team_bp
 from app.controllers.user_routes import auth_bp
@@ -21,37 +21,32 @@ os.makedirs(TEAM_PHOTOS_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
 
-def create_app():
+def create_app(testing=False):
     app = Flask(__name__)
-    # application des cors
-    CORS(app)
-    app.config["UPLOAD_FOLDER"] = os.path.abspath("uploads")
-    app.config["TEAM_PHOTOS_FOLDER"] = os.path.abspath(TEAM_PHOTOS_FOLDER)
-    app.config['SWAGGER'] = {
-        'title': 'JWT API',
-        'uiversion': 3,
-        'securityDefinitions': {
-            'Bearer': {
-                'type': 'apiKey',
-                'name': 'Authorization',
-                'in': 'header',
-                'description': 'Enter your JWT token like this: Bearer <your-token>'
-            }
-        },
-        'security': [{'Bearer': []}]
-    }
-    swagger = Swagger(app)
-    JWTManager(app)
-    CORS(app, resources={r"/auth/*": {"origins": "http://localhost:3000"}})
-    app.config["SQLALCHEMY_DATABASE_URI"] = Config.DATABASE_URL
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
-    app.config.from_object(Config)
-    db.init_app(app)
-    with app.app_context():
-        db.create_all()
-    app.register_blueprint(auth_bp, url_prefix="/auth")
-    app.register_blueprint(event_bp, url_prefix="/event")
-    app.register_blueprint(sport_bp, url_prefix="/sport")
-    app.register_blueprint(team_bp, url_prefix="/team")
+    
+    @app.route('/test')
+    def test_route():
+        return jsonify({"message": "Test route works!"})
+    
+    if not testing:
+        # application des cors
+        CORS(app)
+        app.config["UPLOAD_FOLDER"] = os.path.abspath("uploads")
+        app.config["TEAM_PHOTOS_FOLDER"] = os.path.abspath(TEAM_PHOTOS_FOLDER)
+        # declaration de
+        swagger = Swagger(app)
+        JWTManager(app)
+        CORS(app, resources={r"/auth/*": {"origins": "http://localhost:3000"}})
+        app.config["SQLALCHEMY_DATABASE_URI"] = Config.DATABASE_URL
+        app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+        app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+        app.config.from_object(Config)
+        db.init_app(app)
+        with app.app_context():
+            db.create_all()
+        app.register_blueprint(auth_bp, url_prefix="/auth")
+        app.register_blueprint(event_bp, url_prefix="/event")
+        app.register_blueprint(sport_bp, url_prefix="/sport")
+        app.register_blueprint(team_bp, url_prefix="/team")
+    
     return app
