@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   web:
+    build: .
     image: my-flask-app
     container_name: flask-app
     environment:
