@@ -14,7 +14,6 @@ env:
   DB_USER: "postgres"
   DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
   DB_NAME: "sportconnect"
-  ARTIFACT_BUCKET: sportconnect-artifacts
   CLOUD_SQL_PROXY_VERSION: v2.1.2
   LOG_LEVEL: DEBUG
 
@@ -155,10 +154,11 @@ jobs:
         source venv/bin/activate
         python -m pytest --cov=. --cov-report=term-missing
 
-  deploy:
-    name: Deploy to Development
+  build-and-deploy:
+    name: Build and Deploy
     needs: [security-scan, test]
     runs-on: ubuntu-latest
+    environment: dev
 
     steps:
     - name: Checkout code
@@ -181,8 +181,14 @@ jobs:
 
     - name: Build and Push Container
       run: |
+        # Build the container
         docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
+        docker tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+        
+        # Push both tags
         docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
 
     - name: Deploy to Cloud Run
       run: |
@@ -218,8 +224,16 @@ jobs:
         # Test the service
         curl -f $SERVICE_URL/sport/ || exit 1
 
-    - name: Update Latest Tag
+    - name: Notify deployment status
+      if: always()
       run: |
-        docker tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-          gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
-        docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest 
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "✅ Development deployment completed successfully"
+          echo "Service URL: $SERVICE_URL"
+          echo "Deployment Version: ${{ github.sha }}"
+          echo "View logs: https://console.cloud.google.com/run/detail/${{ env.REGION }}/${{ env.SERVICE_NAME }}/logs?project=${{ env.PROJECT_ID }}"
+        else
+          echo "❌ Development deployment failed"
+          echo "Check the logs for more details: https://console.cloud.google.com/run/detail/${{ env.REGION }}/${{ env.SERVICE_NAME }}/logs?project=${{ env.PROJECT_ID }}"
+          exit 1
+        fi 

@@ -123,113 +123,14 @@ jobs:
       with:
         sarif_file: sarif-results.json
 
-  build:
-    name: Build Application
+  test:
+    name: Run Tests and Quality Checks
     needs: security-scan
     runs-on: ubuntu-latest
-    outputs:
-      build_id: ${{ steps.build_id.outputs.build_id }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        cache: 'pip'
-
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install dependencies
-      run: |
-        python -m venv venv
-        source venv/bin/activate
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    - name: Generate build ID
-      id: build_id
-      run: echo "build_id=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
-
-    - name: Set up Cloud SDK
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
-        token_format: 'access_token'
-        create_credentials_file: true
-
-    - name: Set up gcloud CLI
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        project_id: ${{ env.PROJECT_ID }}
-
-    - name: Cache Cloud SQL proxy
-      uses: actions/cache@v3
-      with:
-        path: cloud-sql-proxy
-        key: ${{ runner.os }}-cloud-sql-proxy-${{ env.CLOUD_SQL_PROXY_VERSION }}
-        restore-keys: |
-          ${{ runner.os }}-cloud-sql-proxy-
-
-    - name: Download Cloud SQL proxy
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: |
-        wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/${{ env.CLOUD_SQL_PROXY_VERSION }}/cloud-sql-proxy.linux.amd64 -O cloud-sql-proxy
-        chmod +x cloud-sql-proxy
-
-    - name: Upload build artifact
-      run: |
-        # Create a temporary directory for the build
-        mkdir -p build
-        
-        # Copy files to build directory, excluding unnecessary files
-        rsync -av --exclude='.git' --exclude='.github' --exclude='__pycache__' --exclude='*.pyc' ./ build/
-        
-        # Create and upload the artifact
-        tar -czf build.tar.gz -C build .
-        gsutil cp build.tar.gz gs://${{ env.ARTIFACT_BUCKET }}/builds/${{ steps.build_id.outputs.build_id }}.tar.gz
-
-    - name: Cleanup old artifacts
-      if: always()
-      run: |
-        # Delete artifacts older than RETENTION_DAYS
-        gsutil ls -l gs://${{ env.ARTIFACT_BUCKET }}/builds/ | \
-        awk -v date="$(date -d "${{ env.RETENTION_DAYS }} days ago" +%s)" \
-        '{if ($1 != "TOTAL:" && $2 < date) print $NF}' | \
-        while read -r file; do
-          gsutil rm "$file"
-        done
-
-  test:
-    name: Run Tests and Quality Checks
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Set up Cloud SDK
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
-        token_format: 'access_token'
-        create_credentials_file: true
-
-    - name: Set up gcloud CLI
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        project_id: ${{ env.PROJECT_ID }}
-
-    - name: Download build artifact
-      run: |
-        gsutil cp gs://${{ env.ARTIFACT_BUCKET }}/builds/${{ needs.build.outputs.build_id }}.tar.gz .
-        tar -xzf ${{ needs.build.outputs.build_id }}.tar.gz
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -256,10 +157,11 @@ jobs:
         source venv/bin/activate
         python -m pytest --cov=. --cov-report=term-missing
 
-  deploy:
-    name: Deploy to Production
+  build-and-deploy:
+    name: Build and Deploy
     needs: [security-scan, test]
     runs-on: ubuntu-latest
+    environment: prod
 
     steps:
     - name: Checkout code
@@ -282,8 +184,14 @@ jobs:
 
     - name: Build and Push Container
       run: |
+        # Build the container
         docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
+        docker tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+        
+        # Push both tags
         docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
 
     - name: Deploy to Cloud Run
       run: |
@@ -319,26 +227,15 @@ jobs:
         # Test the service
         curl -f $SERVICE_URL/sport/ || exit 1
 
-    - name: Update Latest Tag
-      run: |
-        docker tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-          gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
-        docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
-
-    - name: Cleanup temporary files
-      if: always()
-      run: |
-        rm -rf build/ build.tar.gz cloud-sql-proxy
-
     - name: Notify deployment status
       if: always()
       run: |
         if [ "${{ job.status }}" = "success" ]; then
           echo "✅ Production deployment completed successfully"
-          echo "Service URL: $(gcloud app services describe ${{ env.SERVICE_NAME }} --format='value(defaultUrl)')"
+          echo "Service URL: $SERVICE_URL"
           echo "Deployment Version: ${{ github.sha }}"
-          echo "View logs: https://console.cloud.google.com/appengine/versions?project=${{ env.PROJECT_ID }}"
+          echo "View logs: https://console.cloud.google.com/run/detail/${{ env.REGION }}/${{ env.SERVICE_NAME }}/logs?project=${{ env.PROJECT_ID }}"
         else
           echo "❌ Production deployment failed"
-          echo "Check the logs for more details: https://console.cloud.google.com/appengine/versions?project=${{ env.PROJECT_ID }}"
+          echo "Check the logs for more details: https://console.cloud.google.com/run/detail/${{ env.REGION }}/${{ env.SERVICE_NAME }}/logs?project=${{ env.PROJECT_ID }}"
           exit 1 
