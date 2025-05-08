@@ -14,7 +14,10 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
-UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "/tmp/uploads")
+
+# Use a dedicated uploads directory in the application root
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", os.path.join(BASE_DIR, "uploads"))
 TEAM_PHOTOS_FOLDER = os.getenv("TEAM_PHOTOS_FOLDER", os.path.join(UPLOAD_FOLDER, "team_photos"))
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
@@ -31,12 +34,13 @@ def create_app(testing=False):
         return jsonify({"message": "Test route works!"})
     
     if not testing:
-        # Create upload directories if they don't exist
+        # Create upload directories if they don't exist with proper permissions
         try:
-            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-            os.makedirs(TEAM_PHOTOS_FOLDER, exist_ok=True)
+            os.makedirs(UPLOAD_FOLDER, mode=0o755, exist_ok=True)
+            os.makedirs(TEAM_PHOTOS_FOLDER, mode=0o755, exist_ok=True)
         except Exception as e:
-            print(f"Warning: Could not create upload directories: {e}")
+            app.logger.error(f"Failed to create upload directories: {e}")
+            raise RuntimeError("Failed to create required upload directories")
         
         # application des cors
         CORS(app)

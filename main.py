@@ -18,4 +18,7 @@ main_bp = Blueprint("main", __name__)
 
 # Only used when running locally
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    # Default to localhost for security, can be overridden by environment variable
+    host = os.getenv('FLASK_HOST', '127.0.0.1')
+    port = int(os.getenv('FLASK_PORT', 8080))
+    app.run(host=host, port=port)
