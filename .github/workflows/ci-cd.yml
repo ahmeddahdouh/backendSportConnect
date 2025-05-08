@@ -19,12 +19,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Build Docker image
-        run: |
-          docker build -t my-flask-app .
+        run: docker build -t my-flask-app .
 
       - name: Launch with Docker Compose
         env:
@@ -36,8 +35,12 @@ jobs:
         run: |
           docker compose up -d
 
-          # Attendre que le conteneur soit healthy
-          timeout 60 bash -c 'until docker inspect flask-app --format "{{.State.Health.Status}}" | grep -q healthy; do sleep 3; done' || {
+          echo "Waiting for container to become healthy..."
+          timeout 60 bash -c '
+            until docker inspect flask-app --format "{{.State.Health.Status}}" 2>/dev/null | grep -q healthy; do
+              sleep 3
+            done
+          ' || {
             docker logs flask-app
             exit 1
           }
@@ -46,26 +49,25 @@ jobs:
 
       - name: Verify environment
         run: |
-          echo "=== Variables d'environnement ==="
+          echo "=== Environment Variables ==="
           docker exec flask-app env | grep -E "DB_|SECRET_|JWT"
 
-          echo "=== Test de connexion DB ==="
+          echo "=== Database Connection Test ==="
           docker exec flask-app python -c "
 import os;
-print(f\"Connexion à : postgresql://{os.getenv('DB_USER')}:****@{os.getenv('DB_HOST', 'localhost')}:5432/{os.getenv('DB_NAME')}\")
+print(f'Connecting to: postgresql://{os.getenv(\"DB_USER\")}:****@{os.getenv(\"DB_HOST\", \"localhost\")}:5432/{os.getenv(\"DB_NAME\")}')
 "
 
       - name: Test API endpoint
         run: |
           curl -f http://localhost:5000/sport/ || {
-            echo "L'API n'est pas disponible"
+            echo "API endpoint is not available"
             exit 1
           }
 
       - name: Cleanup after tests
         if: always()
-        run: |
-          docker compose down -v  
+        run: docker compose down -v
 
       - name: Deploy to EC2
         if: success() && github.ref == 'refs/heads/master'
@@ -76,15 +78,13 @@ print(f\"Connexion à : postgresql://{os.getenv('DB_USER')}:****@{os.getenv('DB_
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            
+
             sudo apt-get update -y || sudo yum update -y
 
-            # Install Git
             if ! command -v git &> /dev/null; then
               sudo apt-get install -y git || sudo yum install -y git
             fi
 
-            # Install Docker
             if ! command -v docker &> /dev/null; then
               sudo apt-get install -y docker.io || sudo yum install -y docker
               sudo systemctl enable docker
@@ -92,7 +92,6 @@ print(f\"Connexion à : postgresql://{os.getenv('DB_USER')}:****@{os.getenv('DB_
               sudo usermod -aG docker $USER
             fi
 
-            # Install Docker Compose
             if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
               sudo curl -L "https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
               sudo chmod +x /usr/local/bin/docker-compose
@@ -109,7 +108,6 @@ print(f\"Connexion à : postgresql://{os.getenv('DB_USER')}:****@{os.getenv('DB_
               git clone https://github.com/ahmeddahdouh/backendSportConnect.git .
             fi
 
-            # Créer fichier .env
             cat > .env <<EOF
 DB_USER=${{ secrets.DB_USER }}
 DB_PASSWORD=${{ secrets.DB_PASSWORD }}
@@ -130,4 +128,4 @@ EOF
 
             sleep 30
             sudo docker ps
-            curl -f http://localhost:5000/sport/ || echo "L'API n'est pas encore accessible"
+            curl -f http://localhost:5000/sport/ || echo "API is not yet accessible"
