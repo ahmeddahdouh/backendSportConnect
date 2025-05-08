@@ -67,7 +67,7 @@ jobs:
 
       - name: Cleanup after tests
         if: always()
-        run: docker compose down -v
+        run: docker compose down
 
       - name: Deploy to EC2
         if: success() && github.ref == 'refs/heads/master'
