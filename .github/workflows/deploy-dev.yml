@@ -25,10 +25,37 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Run Bandit security scan
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install Bandit
       run: |
+        python -m venv venv
+        source venv/bin/activate
+        python -m pip install --upgrade pip
         python -m pip install bandit
-        bandit -r . -f json -o bandit-results.json
+
+    - name: Run Bandit security scan
+      id: bandit
+      continue-on-error: true
+      run: |
+        source venv/bin/activate
+        bandit -r . -f json -o bandit-results.json -ll -ii
+        echo "Scan completed. Results saved to bandit-results.json"
+
+    - name: Check Bandit results
+      if: steps.bandit.outcome == 'failure'
+      run: |
+        if [ -f bandit-results.json ]; then
+          echo "Security issues found. Review the results below:"
+          cat bandit-results.json
+          exit 1
+        else
+          echo "No security issues found"
+        fi
 
     - name: Upload security scan results
       uses: github/codeql-action/upload-sarif@v2
