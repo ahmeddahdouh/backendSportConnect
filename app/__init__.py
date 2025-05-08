@@ -14,25 +14,34 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
-UPLOAD_FOLDER = "uploads"
-TEAM_PHOTOS_FOLDER = os.path.join(UPLOAD_FOLDER, "team_photos")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(TEAM_PHOTOS_FOLDER, exist_ok=True)
+UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "/tmp/uploads")
+TEAM_PHOTOS_FOLDER = os.getenv("TEAM_PHOTOS_FOLDER", os.path.join(UPLOAD_FOLDER, "team_photos"))
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
 
 def create_app(testing=False):
     app = Flask(__name__)
     
+    @app.route('/')
+    def index():
+        return jsonify({"message": "Welcome to SportConnect API!"})
+    
     @app.route('/test')
     def test_route():
         return jsonify({"message": "Test route works!"})
     
     if not testing:
+        # Create upload directories if they don't exist
+        try:
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            os.makedirs(TEAM_PHOTOS_FOLDER, exist_ok=True)
+        except Exception as e:
+            print(f"Warning: Could not create upload directories: {e}")
+        
         # application des cors
         CORS(app)
-        app.config["UPLOAD_FOLDER"] = os.path.abspath("uploads")
-        app.config["TEAM_PHOTOS_FOLDER"] = os.path.abspath(TEAM_PHOTOS_FOLDER)
+        app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+        app.config["TEAM_PHOTOS_FOLDER"] = TEAM_PHOTOS_FOLDER
         # declaration de
         swagger = Swagger(app)
         JWTManager(app)

@@ -268,15 +268,17 @@ jobs:
     - name: Get instance connection name
       id: get-connection-name
       run: |
-        # First, verify the instance exists
+        # First, verify the instance exists and we have permissions
         echo "Checking instance: ${{ env.DB_INSTANCE }}"
         gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(name,connectionName)' || {
           echo "❌ Failed to get instance details"
+          echo "Checking service account permissions..."
+          gcloud projects get-iam-policy ${{ env.PROJECT_ID }} --format='table(bindings.role,bindings.members)' | grep -i sql
           exit 1
         }
         
-        # Get and set the connection name
-        CONNECTION_NAME=$(gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(connectionName)')
+        # Get and set the connection name with explicit format
+        CONNECTION_NAME="${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE }}"
         echo "Connection name: $CONNECTION_NAME"
         
         if [ -z "$CONNECTION_NAME" ]; then
@@ -293,19 +295,22 @@ jobs:
         echo "Original app.yaml:"
         cat app.yaml
         
-        # Replace variables in app.yaml
+        # Replace variables in app.yaml with explicit values
         sed -i "s|\${DB_PASSWORD}|${{ secrets.DB_PASSWORD }}|g" app.yaml
-        sed -i "s|\${INSTANCE_CONNECTION_NAME}|${{ env.INSTANCE_CONNECTION_NAME }}|g" app.yaml
+        sed -i "s|\${INSTANCE_CONNECTION_NAME}|${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE }}|g" app.yaml
         sed -i "s|\${JWT_SECRET_KEY}|${{ secrets.JWT_SECRET_KEY }}|g" app.yaml
         
         # Debug: Show modified app.yaml
         echo "Modified app.yaml:"
         cat app.yaml
 
-    - name: Debug app.yaml
+    - name: Verify Cloud SQL connection
       run: |
-        echo "Current app.yaml contents:"
-        cat app.yaml
+        echo "Verifying Cloud SQL connection..."
+        gcloud sql instances describe ${{ env.DB_INSTANCE }} --format='value(connectionName,state)' || {
+          echo "❌ Failed to verify Cloud SQL instance"
+          exit 1
+        }
 
     - name: Run database migrations
       env:
