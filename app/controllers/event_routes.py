@@ -116,6 +116,7 @@ def unparticipate_event(event_id: int):
         return jsonify({"error": str(fe)}), 409
 
 @event_bp.route("/<int:event_id>", methods=["GET"])
+@jwt_required()
 def get_event_by_id(event_id):
     """
     Récupère les détails d'un événement par son identifiant.

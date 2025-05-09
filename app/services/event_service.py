@@ -47,6 +47,7 @@ class EventService:
                     "id": user.id,
                     "firstname": user.firstname,
                     "familyname": user.familyname,
+                    "profileImage": user.profile_image,
                 }
                 for user in event_obj.users
             ]
@@ -66,7 +67,7 @@ class EventService:
             raise LookupError("Événement non trouvé")
         # Récupération des utilisateurs participants à l'événement
         members = [
-            {"id": user.id, "firstname": user.firstname, "familyname": user.familyname}
+            {"id": user.id, "firstname": user.firstname, "familyname": user.familyname ,"profileImage":user.profile_image}
             for user in event.users
         ]
         event = {**row2dict(event), "members": members}
