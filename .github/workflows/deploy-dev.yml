@@ -191,16 +191,10 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           image: europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }}
           region: ${{ env.REGION }}
-          flags: '--platform managed --allow-unauthenticated --add-cloudsql-instances sportconnect-dev --memory 512Mi --cpu 1 --min-instances 0 --max-instances 2 --port 8080 --concurrency 40 --timeout 300s --cpu-throttling --execution-environment gen2'
+          flags: '--platform managed --allow-unauthenticated --add-cloudsql-instances ${{ env.DB_INSTANCE }} --service-account github-actions@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
           env_vars: |
             FLASK_ENV=development
-            FLASK_DEBUG=true
-            LOG_LEVEL=DEBUG
-            DB_HOST=34.140.21.30
-            DB_PORT=5432
-            DB_NAME=sportconnect
-            DB_USER=postgres
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_HOST=/cloudsql/${{ env.DB_INSTANCE }}
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
 
       - name: Verify Deployment
@@ -209,14 +203,3 @@ jobs:
           sleep 30
           SERVICE_URL=$(gcloud run services describe dev-backend --platform managed --region europe-west1 --format 'value(status.url)')
           curl -f $SERVICE_URL/sport/ || true
-
-      - name: Notify deployment status
-        if: always()
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_CHANNEL: deployments
-          SLACK_COLOR: ${{ job.status }}
-          SLACK_TITLE: Development Deployment
-          SLACK_MESSAGE: 'Deployment to development ${{ job.status }}'
-          SLACK_FOOTER: 'Triggered by ${{ github.actor }}' 
