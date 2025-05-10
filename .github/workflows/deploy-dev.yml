@@ -11,11 +11,6 @@ env:
   SERVICE_NAME: dev-backend
   REGION: europe-west1
   DB_INSTANCE: ${{ secrets.DB_INSTANCE_DEV }}
-  DB_USER: "postgres"
-  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-  DB_NAME: "sportconnect"
-  CLOUD_SQL_PROXY_VERSION: v2.1.2
-  LOG_LEVEL: DEBUG
 
 jobs:
   security-scan:
@@ -44,87 +39,46 @@ jobs:
       run: |
         source venv/bin/activate
         bandit -r . -f json -o bandit-results.json -ll -ii -x "venv/*,*/venv/*,*/site-packages/*,*/dist-packages/*"
-        echo "Scan completed. Results saved to bandit-results.json"
-
-    - name: Convert to SARIF format
-      run: |
-        # Create SARIF structure
-        cat > sarif-results.json << EOF
-        {
-          "version": "2.1.0",
-          "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
-          "runs": [
-            {
-              "tool": {
-                "driver": {
-                  "name": "Bandit",
-                  "version": "1.8.3",
-                  "informationUri": "https://bandit.readthedocs.io/"
-                }
-              },
-              "results": []
-            }
-          ]
-        }
-        EOF
-
-        # Convert Bandit results to SARIF format if issues were found
-        if [ -f bandit-results.json ]; then
-          jq -r '.results[] | {
-            "ruleId": "BANDIT-\(.test_id)",
-            "level": (if .issue_severity == "HIGH" then "error" elif .issue_severity == "MEDIUM" then "warning" else "note" end),
-            "message": {
-              "text": .issue_text
-            },
-            "locations": [
-              {
-                "physicalLocation": {
-                  "artifactLocation": {
-                    "uri": .filename
-                  },
-                  "region": {
-                    "startLine": .line_number
-                  }
-                }
-              }
-            ]
-          }' bandit-results.json | jq -s '{
-            "version": "2.1.0",
-            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
-            "runs": [{
-              "tool": {
-                "driver": {
-                  "name": "Bandit",
-                  "version": "1.8.3",
-                  "informationUri": "https://bandit.readthedocs.io/"
-                }
-              },
-              "results": .
-            }]
-          }' > sarif-results.json
-        fi
-
-    - name: Check Bandit results
-      if: steps.bandit.outcome == 'failure'
-      run: |
-        if [ -f bandit-results.json ]; then
-          echo "Security issues found. Review the results below:"
-          jq -r '.results[] | "File: \(.filename)\nIssue: \(.issue_text)\nSeverity: \(.issue_severity)\nConfidence: \(.issue_confidence)\nLine: \(.line_number)\n"' bandit-results.json
-          exit 1
-        else
-          echo "No security issues found"
-        fi
 
     - name: Upload security scan results
       uses: github/codeql-action/upload-sarif@v3
       with:
-        sarif_file: sarif-results.json
+        sarif_file: bandit-results.json
+
+  build:
+    name: Build
+    needs: security-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker europe-west1-docker.pkg.dev
+
+      - name: Build and Push Container
+        run: |
+          docker build -t europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }} .
+          docker push europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }}
+          docker tag europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }} europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:latest
+          docker push europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:latest
 
   test:
     name: Run Tests and Quality Checks
-    needs: security-scan
+    needs: build
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -154,9 +108,9 @@ jobs:
         source venv/bin/activate
         python -m pytest --cov=. --cov-report=term-missing
 
-  build-and-deploy:
-    name: Build and Deploy
-    needs: [security-scan, test]
+  deploy:
+    name: Deploy
+    needs: [build, test]
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -175,16 +129,6 @@ jobs:
           project_id: ${{ env.PROJECT_ID }}
           install_components: 'gke-gcloud-auth-plugin'
 
-      - name: Configure Docker
-        run: gcloud auth configure-docker europe-west1-docker.pkg.dev
-
-      - name: Build and Push Container
-        run: |
-          docker build -t europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }} .
-          docker push europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }}
-          docker tag europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }} europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:latest
-          docker push europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:latest
-
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v1
         with:
@@ -194,7 +138,7 @@ jobs:
           flags: '--platform managed --allow-unauthenticated --add-cloudsql-instances ${{ env.DB_INSTANCE }} --service-account sportconnect-deployer@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
           env_vars: |
             FLASK_ENV=development
-            DB_HOST=/cloudsql/${{ env.DB_INSTANCE }}
+            DATABASE_URL=${{ secrets.DB_URL_DEV }}
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
 
       - name: Verify Deployment
@@ -203,7 +147,6 @@ jobs:
           sleep 30
           SERVICE_URL=$(gcloud run services describe dev-backend --platform managed --region europe-west1 --format 'value(status.url)')
           
-          # Try up to 3 times with increasing delays
           for i in {1..3}; do
             echo "Attempt $i to verify deployment..."
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $SERVICE_URL/sport/)
