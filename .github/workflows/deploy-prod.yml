@@ -204,7 +204,7 @@ jobs:
           pip install -r requirements.txt
           
           # Start Cloud SQL Auth proxy in the background
-          ./cloud-sql-proxy ${{ env.DB_INSTANCE }} --credentials-file=${{ secrets.GCP_SA_KEY }} --port 5432 &
+          ./cloud-sql-proxy -instances=${{ env.DB_INSTANCE }}=tcp:5432 &
           
           # Wait for the proxy to be ready
           for i in {1..30}; do
