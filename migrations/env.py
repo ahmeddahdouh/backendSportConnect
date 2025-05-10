@@ -11,31 +11,25 @@ from config import db
 # access to the values within the .ini file in use.
 config = context.config
 load_dotenv()
-section = config.config_ini_section
 
-# Définir les options de la section avec les variables d'environnement
-config.set_section_option(section, "DB_USER", os.getenv("DB_USER"))
-config.set_section_option(section, "DB_PASSWORD", os.getenv("DB_PASSWORD"))
-config.set_section_option(section, "DB_HOST", os.getenv("DB_HOST"))
-config.set_section_option(section, "DB_PORT", os.getenv("DB_PORT"))
-config.set_section_option(section, "DB_NAME", os.getenv("DB_NAME"))
+# Try to get DATABASE_URL first, if not available, construct it from individual variables
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    # Get individual database configuration
+    db_user = os.getenv("DB_USER")
+    db_password = os.getenv("DB_PASSWORD")
+    db_host = os.getenv("DB_HOST")
+    db_port = os.getenv("DB_PORT")
+    db_name = os.getenv("DB_NAME")
+    
+    # Check if all required variables are present
+    if all([db_user, db_password, db_host, db_port, db_name]):
+        database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    else:
+        raise ValueError("Either DATABASE_URL or all individual DB_* variables must be set")
 
-# Vérifiez que les valeurs sont bien récupérées
-db_user = os.getenv("DB_USER")
-db_password = os.getenv("DB_PASSWORD")
-db_host = os.getenv("DB_HOST")
-db_port = os.getenv("DB_PORT")
-db_name = os.getenv("DB_NAME")
-
-# Construire l'URL de connexion
-sqlalchemy_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-
-# Définir l'URL de la base de données pour Alembic
-config.set_main_option("sqlalchemy.url", sqlalchemy_url)
-
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
-config = context.config
+# Set the database URL for Alembic
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

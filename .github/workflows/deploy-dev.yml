@@ -193,7 +193,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-          # Run migrations
+          # Run migrations using the Cloud SQL connection
           export DATABASE_URL=${{ secrets.DB_URL_DEV }}
           alembic upgrade head
 
