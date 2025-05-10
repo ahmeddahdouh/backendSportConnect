@@ -21,6 +21,10 @@ class UserRepository:
         return results
 
     def add_user(self, user_data):
+        # Remove confirmPassword from user_data before creating User instance
+        if 'confirmPassword' in user_data:
+            del user_data['confirmPassword']
+            
         user_db = User(**user_data)
         try:
             db.session.add(user_db)

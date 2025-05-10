@@ -12,14 +12,9 @@ class Config:
     DB_PORT = os.getenv("DB_PORT")
     DB_NAME = os.getenv("DB_NAME")
     
-    # Check if we're using Cloud SQL (Unix socket) or TCP connection
-    if DB_HOST and DB_HOST.startswith('/cloudsql/'):
-        # Extract project:region:instance from /cloudsql/project:region:instance
-        instance_connection_name = DB_HOST.split('/')[-1]
-        DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@localhost/{DB_NAME}?host=/cloudsql/{instance_connection_name}"
-    else:
-        # TCP connection
-        DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    # Construct database URL from environment variables or use DATABASE_URL if provided
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 
+        f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}')
     
     SECRET_KEY = os.getenv("JWT_SECRET_KEY") or "mysecretkey"
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY") or "mysecretkey"

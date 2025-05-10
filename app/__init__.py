@@ -9,12 +9,6 @@ from config import Config, db
 from flasgger import Swagger
 from flask_cors import CORS
 
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-
 # Use a dedicated uploads directory in the application root
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", os.path.join(BASE_DIR, "uploads"))
@@ -50,9 +44,6 @@ def create_app(testing=False):
         swagger = Swagger(app)
         JWTManager(app)
         CORS(app, resources={r"/auth/*": {"origins": "http://localhost:3000"}})
-        app.config["SQLALCHEMY_DATABASE_URI"] = Config.DATABASE_URL
-        app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-        app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
         app.config.from_object(Config)
         db.init_app(app)
         with app.app_context():

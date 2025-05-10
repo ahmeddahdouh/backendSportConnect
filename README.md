@@ -51,17 +51,8 @@ Avant de commencer, assurez-vous d'avoir installé :
 
 ## Configuration des variables
 
-Créer un fichier `.env` à la racine du projet à partir du fichier `.env.exemple` et y ajouter les variables suivantes :
+Créer un fichier `.env` à la racine du projet à partir du fichier `.env.exemple` et en le complètant
 
-```ini
-SECRET_KEY= // vous pouvez utiliser 'openssl rand -base64 32' pour la generer
-JWT_SECRET_KEY=
-DB_USER=
-DB_PASSWORD=
-DB_HOST=
-DB_PORT=
-DB_NAME=
-```
 
 ## Configuration de la base de données avec Docker
 

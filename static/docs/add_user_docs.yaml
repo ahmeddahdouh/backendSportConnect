@@ -14,7 +14,7 @@ parameters:
         - familyname
         - city
         - phone
-        - age
+        - date_of_birth
       properties:
         username:
           type: string
@@ -42,9 +42,10 @@ parameters:
         phone:
           type: string
           example: "+33123456789"
-        age:
-          type: integer
-          example: 25
+        date_of_birth:
+          type: string
+          format: date
+          example: "1990-01-01"
 
 responses:
   '201':
@@ -75,8 +76,9 @@ responses:
             phone:
               type: string
               example: "+33123456789"
-            age:
-              type: integer
-              example: 25
+            date_of_birth:
+              type: string
+              format: date
+              example: "1990-01-01"
   '400':
     description: Error with the provided data.
