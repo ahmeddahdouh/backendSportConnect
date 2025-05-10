@@ -194,7 +194,7 @@ jobs:
           flags: '--platform managed --allow-unauthenticated --add-cloudsql-instances ${{ env.DB_INSTANCE }} --service-account sportconnect-deployer@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
           env_vars: |
             FLASK_ENV=production
-            DATABASE_URL=${{ secrets.DB_URL_PROD-PROD }}
+            DATABASE_URL=${{ secrets.DB_URL_PRO }}
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
 
       - name: Verify Deployment
