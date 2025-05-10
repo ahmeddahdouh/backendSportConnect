@@ -221,7 +221,7 @@ jobs:
           done
           
           # Run migrations using localhost connection
-          export DATABASE_URL="postgresql://postgres:${{ secrets.DB_PASSWORD }}@localhost:5432/sportconnect-prod"
+          export DATABASE_URL="postgresql+psycopg2://postgres:${{ secrets.DB_PASSWORD }}@localhost:5432/sportconnect-prod"
           alembic upgrade head
 
       - name: Deploy to Cloud Run
