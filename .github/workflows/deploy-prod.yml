@@ -195,8 +195,7 @@ jobs:
             --platform managed \
             --region europe-west1 \
             --allow-unauthenticated \
-            --set-env-vars="FLASK_ENV=production,FLASK_DEBUG=false,LOG_LEVEL=INFO,DB_HOST=/cloudsql/${{ env.DB_INSTANCE }},DB_PORT=5432,DB_NAME=sportconnect,DB_USER=postgres" \
-            --set-secrets="DB_PASSWORD=db-credentials:latest,JWT_SECRET_KEY=jwt-secret:latest" \
+            --set-env-vars="FLASK_ENV=production,FLASK_DEBUG=false,LOG_LEVEL=INFO,DB_HOST=/cloudsql/${{ env.DB_INSTANCE }},DB_PORT=5432,DB_NAME=sportconnect,DB_USER=postgres,DB_PASSWORD=${{ secrets.DB_PASSWORD }},JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
             --add-cloudsql-instances ${{ env.DB_INSTANCE }} \
             --memory 1Gi \
             --cpu 1 \
