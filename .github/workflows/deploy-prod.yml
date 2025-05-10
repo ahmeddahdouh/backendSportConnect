@@ -204,7 +204,7 @@ jobs:
           pip install -r requirements.txt
           
           # Start Cloud SQL Auth proxy in the background
-          ./cloud-sql-proxy ${{ env.DB_INSTANCE }} &
+          ./cloud-sql-proxy ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:sportconnect-prod &
           
           # Wait for the proxy to be ready
           for i in {1..30}; do
