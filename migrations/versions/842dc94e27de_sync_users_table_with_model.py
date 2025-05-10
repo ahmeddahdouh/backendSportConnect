@@ -1,7 +1,7 @@
 """sync users table with model
 
 Revision ID: 842dc94e27de
-Revises: 7be656f94d91
+Revises: 59a8177aa630
 Create Date: 2025-05-10 22:01:07.949006
 
 """
@@ -14,7 +14,7 @@ from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision: str = '842dc94e27de'
-down_revision: Union[str, None] = '7be656f94d91'
+down_revision: Union[str, None] = '59a8177aa630'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
