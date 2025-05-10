@@ -191,7 +191,7 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           image: europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }}
           region: ${{ env.REGION }}
-          flags: '--platform managed --allow-unauthenticated --add-cloudsql-instances ${{ env.DB_INSTANCE }} --service-account github-actions@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
+          flags: '--platform managed --allow-unauthenticated --add-cloudsql-instances ${{ env.DB_INSTANCE }} --service-account sportconnect-deployer@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
           env_vars: |
             FLASK_ENV=development
             DB_HOST=/cloudsql/${{ env.DB_INSTANCE }}
