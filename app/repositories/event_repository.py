@@ -2,6 +2,7 @@ from datetime import datetime
 from app.associations.event_users import EventUsers
 from app.models import Event, User
 from config import db
+from sqlalchemy import func
 
 
 class EventRepository:
@@ -21,6 +22,26 @@ class EventRepository:
             db.session.query(Event, User.username.label("username"))
             .join(User, User.id == Event.id_gestionnaire)
             .filter(filter)
+            .all()
+        )
+
+
+
+    def get_events_sorted_by_distance_and_date(self, latitude, longitude):
+        distance_expr = (
+                6371 * func.acos(
+            func.cos(func.radians(latitude)) *
+            func.cos(func.radians(Event.latitude)) *
+            func.cos(func.radians(Event.longitude) - func.radians(longitude)) +
+            func.sin(func.radians(latitude)) *
+            func.sin(func.radians(Event.latitude))
+        )
+        ).label("distance")
+
+        return (
+            db.session.query(Event, distance_expr)
+            .order_by(distance_expr, Event.event_date.desc())
+            .limit(4)
             .all()
         )
 

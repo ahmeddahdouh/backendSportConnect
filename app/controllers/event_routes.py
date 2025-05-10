@@ -54,12 +54,19 @@ def get_events():
     )
 
 
+from flask import request
+
 @event_bp.route("/sortedEvents", methods=["GET"])
 def get_events_sorted_by_date():
     """
     Récupère tous les événements sauf ceux créés par l'utilisateur actuellement connecté.
+    Tri basé sur la position si latitude et longitude sont fournis.
     """
-    return event_service.get_events_sorted_by_date()
+    latitude = request.args.get('latitude', type=float)
+    longitude = request.args.get('longitude', type=float)
+
+    return event_service.get_events_sorted_by_date(latitude, longitude)
+
 
 
 
