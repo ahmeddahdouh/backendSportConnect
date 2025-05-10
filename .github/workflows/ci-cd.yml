@@ -33,8 +33,7 @@ jobs:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
         run: |
-          docker compose down -v || true
-          docker compose up -d --force-recreate
+          docker compose up -d
 
           echo "Waiting for container to become healthy..."
           timeout 60 bash -c "
@@ -115,9 +114,7 @@ jobs:
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
             EOF
 
-            sudo docker compose down -v --remove-orphans || true
-            sudo docker system prune -f --volumes || true
-
+            sudo docker compose down || true
 
             if docker compose version &> /dev/null; then
               COMPOSE="docker compose"
@@ -127,7 +124,7 @@ jobs:
             fi
 
             sudo $COMPOSE build
-            sudo $COMPOSE up -d --force-recreate
+            sudo $COMPOSE up -d
 
             sleep 30
             sudo docker ps
