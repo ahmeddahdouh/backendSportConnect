@@ -67,7 +67,7 @@ jobs:
 
       - name: Cleanup after tests
         if: always()
-        run: docker compose down -v
+        run: docker compose down
 
       - name: Deploy to EC2
         if: success() && github.ref == 'refs/heads/master'
@@ -114,7 +114,7 @@ jobs:
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
             EOF
 
-            sudo docker compose down || true
+            sudo docker compose down -v || true
 
             if docker compose version &> /dev/null; then
               COMPOSE="docker compose"
