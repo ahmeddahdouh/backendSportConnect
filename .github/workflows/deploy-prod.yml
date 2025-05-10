@@ -204,11 +204,24 @@ jobs:
           pip install -r requirements.txt
           
           # Start Cloud SQL Auth proxy in the background
-          ./cloud-sql-proxy ${{ env.DB_INSTANCE }} --port 5432 &
-          sleep 5  # Wait for the proxy to start
+          ./cloud-sql-proxy ${{ env.DB_INSTANCE }} --credentials-file=${{ secrets.GCP_SA_KEY }} --port 5432 &
+          
+          # Wait for the proxy to be ready
+          for i in {1..30}; do
+            if nc -z localhost 5432; then
+              echo "Cloud SQL Auth proxy is ready"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Cloud SQL Auth proxy failed to start"
+              exit 1
+            fi
+            echo "Waiting for Cloud SQL Auth proxy to start... ($i/30)"
+            sleep 1
+          done
           
           # Run migrations using localhost connection
-          export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sportConnectBack"
+          export DATABASE_URL="postgresql://postgres:${{ secrets.DB_PASSWORD }}@localhost:5432/sportconnect-prod"
           alembic upgrade head
 
       - name: Deploy to Cloud Run
