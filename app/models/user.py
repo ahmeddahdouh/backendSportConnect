@@ -14,6 +14,9 @@ class User(db.Model):
     firstname = db.Column(db.String(100), nullable=False)
     familyname = db.Column(db.String(100), nullable=False)
 
+    # Adresse complète
+    address = db.Column(db.String(255), nullable=True)
+    postal_code = db.Column(db.String(10), nullable=True)
     city = db.Column(db.String, nullable=False)
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
