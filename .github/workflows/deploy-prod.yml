@@ -121,6 +121,11 @@ jobs:
           project_id: ${{ env.PROJECT_ID }}
           install_components: 'gke-gcloud-auth-plugin'
 
+      - name: Install Cloud SQL Auth proxy
+        run: |
+          wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.1/cloud-sql-proxy.linux.amd64 -O cloud-sql-proxy
+          chmod +x cloud-sql-proxy
+
       - name: Configure Docker
         run: gcloud auth configure-docker europe-west1-docker.pkg.dev
 
@@ -185,6 +190,11 @@ jobs:
           project_id: ${{ env.PROJECT_ID }}
           install_components: 'gke-gcloud-auth-plugin'
 
+      - name: Install Cloud SQL Auth proxy
+        run: |
+          wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.1/cloud-sql-proxy.linux.amd64 -O cloud-sql-proxy
+          chmod +x cloud-sql-proxy
+
       - name: Run Database Migrations
         run: |
           # Install dependencies
@@ -193,8 +203,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-          # Run migrations using the Cloud SQL connection
-          export DATABASE_URL=${{ secrets.DB_URL_PROD }}
+          # Start Cloud SQL Auth proxy in the background
+          ./cloud-sql-proxy ${{ env.DB_INSTANCE }} --port 5432 &
+          sleep 5  # Wait for the proxy to start
+          
+          # Run migrations using localhost connection
+          export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sportConnectBack"
           alembic upgrade head
 
       - name: Deploy to Cloud Run
