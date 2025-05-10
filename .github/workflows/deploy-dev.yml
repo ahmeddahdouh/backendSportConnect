@@ -185,6 +185,18 @@ jobs:
           project_id: ${{ env.PROJECT_ID }}
           install_components: 'gke-gcloud-auth-plugin'
 
+      - name: Run Database Migrations
+        run: |
+          # Install dependencies
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+          # Run migrations
+          export DATABASE_URL=${{ secrets.DB_URL_DEV }}
+          alembic upgrade head
+
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v1
         with:
