@@ -144,6 +144,3 @@ jobs:
             sleep 30
             sudo docker ps
             curl -f http://localhost:5000/sport/ || echo "API is not yet accessible"
-    - name: Shutdown docker compose
-      run: |
-        docker compose down
