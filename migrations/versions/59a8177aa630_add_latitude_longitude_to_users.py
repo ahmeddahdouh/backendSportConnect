@@ -7,6 +7,7 @@ Create Date: 2024-03-19
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -17,12 +18,24 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add latitude and longitude columns to users table
-    op.add_column('users', sa.Column('latitude', sa.Float(), nullable=True))
-    op.add_column('users', sa.Column('longitude', sa.Float(), nullable=True))
+    # Get inspector to check existing columns
+    inspector = inspect(op.get_bind())
+    columns = [col['name'] for col in inspector.get_columns('users')]
+    
+    # Add latitude and longitude columns if they don't exist
+    if 'latitude' not in columns:
+        op.add_column('users', sa.Column('latitude', sa.Float(), nullable=True))
+    if 'longitude' not in columns:
+        op.add_column('users', sa.Column('longitude', sa.Float(), nullable=True))
 
 
 def downgrade() -> None:
-    # Remove latitude and longitude columns from users table
-    op.drop_column('users', 'longitude')
-    op.drop_column('users', 'latitude')
+    # Get inspector to check existing columns
+    inspector = inspect(op.get_bind())
+    columns = [col['name'] for col in inspector.get_columns('users')]
+    
+    # Remove latitude and longitude columns if they exist
+    if 'longitude' in columns:
+        op.drop_column('users', 'longitude')
+    if 'latitude' in columns:
+        op.drop_column('users', 'latitude')

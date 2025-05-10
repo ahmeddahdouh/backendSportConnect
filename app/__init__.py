@@ -37,13 +37,19 @@ def create_app(testing=False):
             raise RuntimeError("Failed to create required upload directories")
         
         # application des cors
-        CORS(app)
+        CORS(app, resources={
+            r"/*": {
+                "origins": [
+                    "http://localhost:3000",
+                    "https://sportconnect-front-e283.vercel.app"
+                ]
+            }
+        })
         app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
         app.config["TEAM_PHOTOS_FOLDER"] = TEAM_PHOTOS_FOLDER
         # declaration de
         swagger = Swagger(app)
         JWTManager(app)
-        CORS(app, resources={r"/auth/*": {"origins": "http://localhost:3000"}})
         app.config.from_object(Config)
         db.init_app(app)
         with app.app_context():
