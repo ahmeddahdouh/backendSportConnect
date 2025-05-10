@@ -10,7 +10,7 @@ import bcrypt
 from . import row2dict
 from flasgger import swag_from
 import json
-from datetime import timedelta
+from datetime import timedelta, datetime
 import uuid
 
 from ..associations.user_sports import UserSports
@@ -44,7 +44,6 @@ def register():
 
     # Vérification du format de la date de naissance
     try:
-        from datetime import datetime
         date_of_birth = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
     except ValueError:
         return jsonify({"message": "Invalid date format. Use YYYY-MM-DD"}), 400
