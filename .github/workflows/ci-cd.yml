@@ -35,7 +35,17 @@ jobs:
         run: |
           docker compose up -d
 
-          echo "Waiting for container to become healthy..."
+          echo "Waiting for PostgreSQL container to be ready..."
+          timeout 60 bash -c "
+            until docker exec postgres-db pg_isready -U ${DB_USER} -d ${DB_NAME} -h ${DB_HOST}; do
+              sleep 3
+            done
+          " || {
+            echo "PostgreSQL is not ready"
+            exit 1
+          }
+
+          echo "Waiting for Flask container to be healthy..."
           timeout 120 bash -c "
             until docker inspect flask-app --format '{{.State.Health.Status}}' 2>/dev/null | grep -q healthy; do
               sleep 3
@@ -46,6 +56,11 @@ jobs:
           }
 
           docker logs flask-app
+
+      - name: Run Alembic migrations
+        run: |
+          echo "Running Alembic migrations..."
+          docker exec flask-app alembic upgrade head
 
       - name: Verify environment
         run: |
@@ -120,7 +135,7 @@ jobs:
               COMPOSE="docker compose"
             
             else
-            COMPOSE="docker-compose"
+              COMPOSE="docker-compose"
             fi
 
             sudo $COMPOSE build
