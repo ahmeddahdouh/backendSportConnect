@@ -13,5 +13,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Expose the port Flask runs on
 EXPOSE 5000
 
-# Run Alembic migrations then start the app
+# Define the command to run the application
 CMD ["sh", "-c", "alembic upgrade head && python run.py"]
