@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 5000
 
 # Define the command to run the application
-CMD ["sh", "-c", "alembic upgrade head && python run.py"]
+CMD ["python", "run.py"]
