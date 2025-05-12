@@ -56,3 +56,21 @@ class UserRepository:
 
     def get_user_by_username(self, username):
         return User.query.filter_by(username=username).first()
+    
+    def get_all_users(self):
+        return User.query.all()
+
+    def get_user_by_id(self, user_id):
+        return User.query.get(user_id)
+
+    
+    def delete_user(self, user):
+        from config import db
+        db.session.delete(user)
+        db.session.commit()
+
+    def delete_events(self, events):
+        from config import db
+        for event in events:
+            db.session.delete(event)
+        db.session.commit()

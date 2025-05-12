@@ -9,6 +9,11 @@ from config import Config, db
 from flasgger import Swagger
 from flask_cors import CORS
 
+from app.controllers.admin_event_controller import admin_event_bp
+from app.controllers.admin_user_controller import admin_user_bp 
+from app.controllers.admin_controller import admin_admin_bp
+
+
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
@@ -42,4 +47,13 @@ def create_app():
     app.register_blueprint(event_bp, url_prefix="/event")
     app.register_blueprint(sport_bp, url_prefix="/sport")
     app.register_blueprint(team_bp, url_prefix="/team")
+
+       #admin
+    #app.register_blueprint(admin_bp)
+    app.register_blueprint(admin_event_bp)
+    app.register_blueprint(admin_user_bp)
+    app.register_blueprint(admin_admin_bp)
+
+
+
     return app

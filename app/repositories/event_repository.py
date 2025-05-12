@@ -6,6 +6,9 @@ from config import db
 
 class EventRepository:
 
+
+ 
+
     def add_event(self, event_data):
         event = Event(**event_data)
         db.session.add(event)
@@ -70,3 +73,6 @@ class EventRepository:
         event = self.get_event_by_id(event_id)
         db.session.delete(event)
         db.session.commit()
+
+    def get_all_events(self):
+        return Event.query.all()
