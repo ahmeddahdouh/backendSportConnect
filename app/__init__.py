@@ -48,6 +48,15 @@ def create_app(testing=False):
                 "supports_credentials": True
             }
         })
+
+        @app.after_request
+        def after_request(response):
+            response.headers.add('Access-Control-Allow-Origin', 'https://sportconnect-front-e283.vercel.app')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response
+
         app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
         app.config["TEAM_PHOTOS_FOLDER"] = TEAM_PHOTOS_FOLDER
         # declaration de
