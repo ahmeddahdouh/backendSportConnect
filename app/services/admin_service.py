@@ -49,7 +49,7 @@ class AdminService:
             "age": a.age
         } for a in admins]
 
-    def create_admin(data):
+    def create_admin(self,data):
         if adminRepository.find_by_username_or_email(data['username'], data['email']):
             return None, "Admin existe déjà"
         
@@ -68,5 +68,5 @@ class AdminService:
         adminRepository.add_admin(new_admin)
         return new_admin, None
 
-    def remove_admin(admin_id):
+    def remove_admin(self,admin_id):
         return adminRepository.delete_admin_by_id(admin_id)

@@ -9,14 +9,14 @@ class AdminRepository:
     def get_all_admins(self):
         return Admin.query.all()
 
-    def find_by_username_or_email(username, email):
+    def find_by_username_or_email(self,username, email):
         return Admin.query.filter((Admin.username == username) | (Admin.email == email)).first()
 
-    def add_admin(admin):
+    def add_admin(self,admin):
         db.session.add(admin)
         db.session.commit()
 
-    def delete_admin_by_id(admin_id):
+    def delete_admin_by_id(self,admin_id):
         admin = Admin.query.get(admin_id)
         if admin:
             db.session.delete(admin)
