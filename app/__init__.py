@@ -42,7 +42,10 @@ def create_app(testing=False):
                 "origins": [
                     "http://localhost:3000",
                     "https://sportconnect-front-e283.vercel.app"
-                ]
+                ],
+                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                "allow_headers": ["Content-Type", "Authorization"],
+                "supports_credentials": True
             }
         })
         app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
