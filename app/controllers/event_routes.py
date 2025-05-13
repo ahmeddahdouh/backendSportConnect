@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 from app.services.user_service import UserService
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ..models import Event, User
@@ -184,15 +186,16 @@ def update_event(event_id):
     if int(event["id_gestionnaire"]) != user_id:
         return {"message": "Non autorisé. Seul le gestionnaire peut modifier cet événement."}, 403
 
-    data = request.get_json()
-
     try:
-        event_service.update_event(event, data)
-        return {
-            "message": "Événement mis à jour avec succès.",
-            "event": event
-        }, 200
+        # Récupère les données JSON et le fichier image envoyés en multipart/form-data
+        data = json.loads(request.form.get("data", "{}"))
+        file = request.files.get("file")
+        event_service.update_event(data, event_id, file)
+
+        return jsonify({"message": "Événement mis à jour avec succès."}), 200
     except ValueError as e:
-        return {"error": str(e)}, 400
+        return jsonify({"erreur": str(e)}), 404
+    except IntegrityError as e:
+        return jsonify({"erreur": str(e)}), 409
     except Exception as e:
-        return {"error": str(e)}, 500
+        return jsonify({"erreur": str(e)}), 500
