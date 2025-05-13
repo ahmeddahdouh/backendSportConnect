@@ -1,6 +1,7 @@
 import uuid
 import os
 from datetime import datetime
+from sqlite3 import IntegrityError
 
 from flask import jsonify, current_app
 from app.controllers import row2dict
@@ -75,8 +76,51 @@ class EventService:
         event = {**row2dict(event), "members": members}
         return event
 
-    def update_event(self, event, data):
-        return self.event_repository.update_event(event, data)
+
+    def _parse_event_date(self, value):
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(value, fmt)
+            except ValueError:
+                continue
+        return None
+
+    def update_event(self, data, event_id,file):
+        event = self.event_repository.get_event_by_id(event_id)
+        if not event:
+            raise ValueError("Event does not exist")
+        if(file):
+            file_ext = file.filename.split(".")[-1]
+            unique_id = uuid.uuid4()
+            eventImageName = str(unique_id) + "." + file_ext
+            file_path = os.path.join(current_app.config["TEAM_PHOTOS_FOLDER"], eventImageName)
+            file.save(file_path)
+            data["event_image"] = eventImageName
+
+        # Convert string 'None' or empty strings to None for numeric/date fields
+        for field in ['price', 'event_commande_participation']:
+            if field in data and (data[field] == 'None' or data[field] == ''):
+                data[field] = None
+
+        # Handle date parsing
+        if 'event_date' in data:
+            parsed = self._parse_event_date(data['event_date'])
+            if not parsed:
+                return {"message": "Invalid date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS."}, 400
+            data['event_date'] = parsed
+
+        # Update only valid attributes
+        for k, v in data.items():
+            if hasattr(event, k):
+                setattr(event, k, v)
+
+        try:
+            self.event_repository.update_event()
+            return {"message": "Event updated successfully"}, 200
+        except IntegrityError as e:
+            raise IntegrityError(f"{e.orig if e.orig else e}")
+        except Exception as e:
+            raise e
 
     def participate_user_to_event(self, user_id, event_id):
         event = self.event_repository.get_event_by_id(event_id)
