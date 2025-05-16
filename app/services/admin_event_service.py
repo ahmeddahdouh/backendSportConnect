@@ -1,9 +1,9 @@
 from app.repositories.event_repository import EventRepository
 
 
-EventRepository = EventRepository()
+EventRepositor = EventRepository()
 def list_events_admin():
-    events = EventRepository.get_all_events()
+    events = EventRepositor.get_all_events()
     return [{
         "id": event.id,
         "event_name": event.event_name,
@@ -22,8 +22,8 @@ def list_events_admin():
     } for event in events]
 
 def remove_event_by_id(event_id):
-    event = EventRepository.get_event_by_id(event_id)
+    event = EventRepositor.get_event_by_id(event_id)
     if not event:
         return None
-    EventRepository.delete_event(event)
+    EventRepositor.delete_event(event)
     return event

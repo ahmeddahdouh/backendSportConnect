@@ -7,7 +7,7 @@ admin_event_bp = Blueprint("admin_event_bp", __name__)
 def get_all_events_admin():
     return jsonify(list_events_admin())
 
-@admin_event_bp.route("/event/<int:event_id>", methods=["DELETE"])
+@admin_event_bp.route("/api/event/<int:event_id>", methods=["DELETE"])
 def delete_event(event_id):
     event = remove_event_by_id(event_id)
     if not event:
