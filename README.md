@@ -49,19 +49,42 @@ Avant de commencer, assurez-vous d'avoir installé :
    pip install -r requirements.txt
    ```
 
-## Configuration
+## Configuration des variables
 
-Créer un fichier `.env` à la racine du projet et y ajouter les variables suivantes :
+Créer un fichier `.env` à la racine du projet à partir du fichier `.env.exemple` et en le complètant
 
-```ini
-SECRET_KEY= // vous pouvez utiliser 'openssl rand -base64 32' pour la generer
-JWT_SECRET_KEY=
-DB_USER=
-DB_PASSWORD=
-DB_HOST=
-DB_PORT=
-DB_NAME=
-```
+
+## Configuration de la base de données avec Docker
+
+1. **Installer Docker et Docker Compose** :
+   - [Installation Docker](https://docs.docker.com/get-docker/)
+   - [Installation Docker Compose](https://docs.docker.com/compose/install/)
+
+2. **Lancer la base de données PostgreSQL** :
+   ```sh
+   docker-compose up -d
+   ```
+   Cette commande va démarrer un conteneur PostgreSQL avec les configurations définies dans le fichier `docker-compose.yml`.
+
+3. **Configurer les variables d'environnement** :
+   - `DB_USER` : postgres (par défaut)
+   - `DB_PASSWORD` : postgres (par défaut)
+   - `DB_HOST` : localhost
+   - `DB_PORT` : 5432
+   - `DB_NAME` : postgres
+
+4. **Vérifier le statut du conteneur** :
+   ```sh
+   docker-compose ps
+   ```
+
+5. **Accéder à la base de données** :
+   ```sh
+   docker exec -it <nom_du_conteneur> psql -U postgres
+   ```
+
+La base de données sera automatiquement configurée et accessible par l'application via SQLAlchemy.
+
 
 ## Exécution de l'application
 

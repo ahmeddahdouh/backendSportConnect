@@ -1,47 +1,74 @@
 import os
-from flask import Flask
-from flask_cors import CORS
+from flask import Flask, jsonify
 from flask_jwt_extended import JWTManager
-from flask_sqlalchemy import SQLAlchemy
-from app.routes.app_routes import main_bp
-from app.routes.team_routes import team_bp
-from app.routes.user_routes import auth_bp
-from app.routes.event_routes import event_bp
-from app.routes.sport_routes import sport_bp
+from app.controllers.team_routes import team_bp
+from app.controllers.user_routes import auth_bp
+from app.controllers.event_routes import event_bp
+from app.controllers.sport_routes import sport_bp
 from config import Config, db
 from flasgger import Swagger
 from flask_cors import CORS
 
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-ALLOWED_EXTENSIONS =  {'png', 'jpg', 'jpeg', 'gif'}
+# Use a dedicated uploads directory in the application root
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", os.path.join(BASE_DIR, "uploads"))
+TEAM_PHOTOS_FOLDER = os.getenv("TEAM_PHOTOS_FOLDER", os.path.join(UPLOAD_FOLDER, "team_photos"))
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
 
-
-def create_app():
+def create_app(testing=False):
     app = Flask(__name__)
-    # application des cors
-    CORS(app)
-    app.config['UPLOAD_FOLDER'] = app.config['UPLOAD_FOLDER'] = os.path.abspath('uploads')
-    #declaration de
-    swagger = Swagger(app)
-    JWTManager(app)
-    CORS(app, resources={r"/auth/*": {"origins": "http://localhost:3000"}})
-    app.config["SQLALCHEMY_DATABASE_URI"] = Config.DATABASE_URL
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
-    app.config.from_object(Config)
-    db.init_app(app)
-    with app.app_context():
-        db.create_all()
-    app.register_blueprint(auth_bp, url_prefix="/auth")
-    app.register_blueprint(main_bp, url_prefix="")
-    app.register_blueprint(event_bp, url_prefix="/event")
-    app.register_blueprint(sport_bp, url_prefix="/sport")
-    app.register_blueprint(team_bp, url_prefix="/team")
+    
+    @app.route('/')
+    def index():
+        return jsonify({"message": "Welcome to SportConnect API!"})
+    
+    @app.route('/test')
+    def test_route():
+        return jsonify({"message": "Test route works!"})
+    
+    if not testing:
+        # Create upload directories if they don't exist with proper permissions
+        try:
+            os.makedirs(UPLOAD_FOLDER, mode=0o755, exist_ok=True)
+            os.makedirs(TEAM_PHOTOS_FOLDER, mode=0o755, exist_ok=True)
+        except Exception as e:
+            app.logger.error(f"Failed to create upload directories: {e}")
+            raise RuntimeError("Failed to create required upload directories")
+        
+        # application des cors
+        CORS(app, resources={
+            r"/*": {
+                "origins": [
+                    "http://localhost:3000",
+                    "https://sportconnect-front-e283.vercel.app"
+                ],
+                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                "allow_headers": ["Content-Type", "Authorization"],
+                "supports_credentials": True
+            }
+        })
+
+        @app.after_request
+        def after_request(response):
+            response.headers.add('Access-Control-Allow-Origin', 'https://sportconnect-front-e283.vercel.app')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response
+
+        app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+        app.config["TEAM_PHOTOS_FOLDER"] = TEAM_PHOTOS_FOLDER
+        # declaration de
+        swagger = Swagger(app)
+        JWTManager(app)
+        app.config.from_object(Config)
+        db.init_app(app)
+        with app.app_context():
+            db.create_all()
+        app.register_blueprint(auth_bp, url_prefix="/auth")
+        app.register_blueprint(event_bp, url_prefix="/event")
+        app.register_blueprint(sport_bp, url_prefix="/sport")
+        app.register_blueprint(team_bp, url_prefix="/team")
+    
     return app

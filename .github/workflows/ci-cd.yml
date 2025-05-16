@@ -1,0 +1,61 @@
+name: CI/CD Flask + Postgres
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: admin
+          POSTGRES_DB: sportConnectBack
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run basic syntax check
+      run: |
+        python -m py_compile run.py
+
+    - name: Build Docker image
+      run: |
+        docker build -t my-flask-app .
+
+    - name: Set environment variables
+      run: |
+        echo "DB_USER=postgres" >> $GITHUB_ENV
+        echo "DB_PASSWORD=admin" >> $GITHUB_ENV
+        echo "DB_NAME=sportConnectBack" >> $GITHUB_ENV
+
+    - name: Run docker compose
+      run: |
+        docker compose up -d
+        sleep 20
+
+    - name: Shutdown docker compose
+      run: |
+        docker compose down
