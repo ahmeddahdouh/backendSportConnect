@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 from app.services.user_service import UserService
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ..models import Event, User
@@ -54,12 +56,19 @@ def get_events():
     )
 
 
+from flask import request
+
 @event_bp.route("/sortedEvents", methods=["GET"])
 def get_events_sorted_by_date():
     """
     Récupère tous les événements sauf ceux créés par l'utilisateur actuellement connecté.
+    Tri basé sur la position si latitude et longitude sont fournis.
     """
-    return event_service.get_events_sorted_by_date()
+    latitude = request.args.get('latitude', type=float)
+    longitude = request.args.get('longitude', type=float)
+
+    return event_service.get_events_sorted_by_date(latitude, longitude)
+
 
 
 
@@ -116,6 +125,7 @@ def unparticipate_event(event_id: int):
         return jsonify({"error": str(fe)}), 409
 
 @event_bp.route("/<int:event_id>", methods=["GET"])
+@jwt_required()
 def get_event_by_id(event_id):
     """
     Récupère les détails d'un événement par son identifiant.
@@ -176,15 +186,16 @@ def update_event(event_id):
     if int(event["id_gestionnaire"]) != user_id:
         return {"message": "Non autorisé. Seul le gestionnaire peut modifier cet événement."}, 403
 
-    data = request.get_json()
-
     try:
-        event_service.update_event(event, data)
-        return {
-            "message": "Événement mis à jour avec succès.",
-            "event": event
-        }, 200
+        # Récupère les données JSON et le fichier image envoyés en multipart/form-data
+        data = json.loads(request.form.get("data", "{}"))
+        file = request.files.get("file")
+        event_service.update_event(data, event_id, file)
+
+        return jsonify({"message": "Événement mis à jour avec succès."}), 200
     except ValueError as e:
-        return {"error": str(e)}, 400
+        return jsonify({"erreur": str(e)}), 404
+    except IntegrityError as e:
+        return jsonify({"erreur": str(e)}), 409
     except Exception as e:
-        return {"error": str(e)}, 500
+        return jsonify({"erreur": str(e)}), 500

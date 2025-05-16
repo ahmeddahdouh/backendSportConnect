@@ -1,7 +1,11 @@
 from datetime import datetime
+
+from sqlalchemy.exc import IntegrityError
+
 from app.associations.event_users import EventUsers
 from app.models import Event, User
 from config import db
+from sqlalchemy import func
 
 
 class EventRepository:
@@ -24,6 +28,26 @@ class EventRepository:
             .all()
         )
 
+
+
+    def get_events_sorted_by_distance_and_date(self, latitude, longitude):
+        distance_expr = (
+                6371 * func.acos(
+            func.cos(func.radians(latitude)) *
+            func.cos(func.radians(Event.latitude)) *
+            func.cos(func.radians(Event.longitude) - func.radians(longitude)) +
+            func.sin(func.radians(latitude)) *
+            func.sin(func.radians(Event.latitude))
+        )
+        ).label("distance")
+
+        return (
+            db.session.query(Event, distance_expr)
+            .order_by(distance_expr, Event.event_date.desc())
+            .limit(4)
+            .all()
+        )
+
     def get_events_sorted_by_date(self):
         return (
             db.session.query(Event)
@@ -35,24 +59,18 @@ class EventRepository:
     def get_event_by_id(self, event_id):
         return Event.query.get(event_id)
 
-    def update_event(self, event, data):
+    def update_event(self):
+        try:
+            db.session.commit()
+        except IntegrityError as e :
+            db.session.rollback()
+            raise IntegrityError(f'{e.orig if e.orig else e}')
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
-        excluded_fields = {"id", "created_at"}
 
-        [
-            setattr(event, key, value)
-            for key, value in data.items()
-            if hasattr(event, key) and key not in excluded_fields
-        ]
 
-        if "event_date" in data:
-            try:
-                event["event_date"] = datetime.strptime(
-                    data["event_date"], "%Y-%m-%d %H:%M:%S"
-                )
-            except ValueError:
-                return {"message": "Invalid date format. Use YYYY-MM-DD HH:MM:SS."}, 400
-        db.session.commit()
 
     def is_user_alredy_participating(self, event_id, user_id):
         return (EventUsers.query.filter_by(event_id=event_id, user_id=user_id).first())
