@@ -2,7 +2,4 @@
 .venv
 .env
 __pycache__
-<<<<<<< HEAD
-=======
 .pytest_cache
->>>>>>> 79387b00de7ca9b435fbd24eaf3f20d54bd19d28
