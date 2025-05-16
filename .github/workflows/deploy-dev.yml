@@ -10,7 +10,6 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   SERVICE_NAME: dev-backend
   REGION: europe-west1
-  DB_INSTANCE: ${{ secrets.DB_INSTANCE_DEV }}
 
 jobs:
   security-scan:
@@ -203,7 +202,7 @@ jobs:
           pip install -r requirements.txt
           
           # Start Cloud SQL Auth proxy in the background
-          ./cloud-sql-proxy ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE }} &
+          ./cloud-sql-proxy ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:${{ secrets.DB_INSTANCE }} &
           
           # Wait for the proxy to be ready
           for i in {1..30}; do
@@ -220,7 +219,7 @@ jobs:
           done
           
           # Run migrations using localhost connection
-          export DATABASE_URL="postgresql+psycopg2://postgres:${{ secrets.DB_PASSWORD }}@localhost:5432/sportconnect"
+          export DATABASE_URL="postgresql+psycopg2://postgres:${{ secrets.DB_PASSWORD }}@localhost:5432/database-dev"
           alembic upgrade head
 
       - name: Deploy to Cloud Run
@@ -229,7 +228,7 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           image: europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/dev-backend/backend:${{ github.sha }}
           region: ${{ env.REGION }}
-          flags: '--platform managed --allow-unauthenticated --add-cloudsql-instances ${{ env.DB_INSTANCE }} --service-account sportconnect-deployer@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
+          flags: '--platform managed --allow-unauthenticated --add-cloudsql-instances ${{ secrets.DB_INSTANCE }} --service-account sportconnect-deployer@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
           env_vars: |
             FLASK_ENV=development
             DATABASE_URL=${{ secrets.DB_URL_DEV }}
