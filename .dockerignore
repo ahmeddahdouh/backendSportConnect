@@ -1,6 +1,53 @@
-.venv
-__pycache__
-*.pyc
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
 .git
-.DS_Store
 .gitignore
+.gitattributes
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Logs
+*.log
+logs/
+
+# Local development
+.DS_Store
+*.db
+*.sqlite3
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Misc
+*.bak
+*.tmp
+*~

@@ -10,7 +10,7 @@ import bcrypt
 from . import row2dict
 from flasgger import swag_from
 import json
-from datetime import timedelta
+from datetime import timedelta, datetime
 import uuid
 
 from ..associations.user_sports import UserSports
@@ -32,28 +32,26 @@ def register():
     familyname = data.get("familyname")
     city = data.get("city")
     phone = data.get("phone")
-    age = data.get("age")
+    date_of_birth = data.get("date_of_birth")
 
     # Vérification des champs obligatoires
-    if not all([username, email, password, confirm_password, firstname, familyname, city, phone, age]):
+    if not all([username, email, password, confirm_password, firstname, familyname, city, phone, date_of_birth]):
         return jsonify({"message": "Missing data"}), 400
 
     # Vérification de la correspondance des mots de passe
     if password != confirm_password:
         return jsonify({"message": "Passwords do not match"}), 400
 
-    # Vérification que l'âge est bien un entier positif
+    # Vérification du format de la date de naissance
     try:
-        age = int(age)
-        if age <= 0:
-            return jsonify({"message": "Invalid age"}), 400
+        date_of_birth = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
     except ValueError:
-        return jsonify({"message": "Age must be an integer"}), 400
+        return jsonify({"message": "Invalid date format. Use YYYY-MM-DD"}), 400
 
     # Hachage du mot de passe
     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
-    # Création de l'utilisateur
+    # Création de l'utilisateur avec les champs nécessaires uniquement
     user = User(
         username=username,
         email=email,
@@ -62,7 +60,7 @@ def register():
         familyname=familyname,
         city=city,
         phone=phone,
-        age=age
+        date_of_birth=date_of_birth
     )
 
     try:
@@ -178,13 +176,11 @@ def update_user(user_id):
         user.city = data["city"]
     if "phone" in data:
         user.phone = data["phone"]
-    if "age" in data:
+    if "date_of_birth" in data:
         try:
-            user.age = int(data["age"])
-            if user.age <= 0:
-                return jsonify({"message": "Invalid age"}), 400
+            user.date_of_birth = datetime.strptime(data["date_of_birth"], "%Y-%m-%d").date()
         except ValueError:
-            return jsonify({"message": "Age must be an integer"}), 400
+            return jsonify({"message": "Invalid date format. Use YYYY-MM-DD"}), 400
     if "password" in data:
         hashed_password = bcrypt.hashpw(data["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         user.password = hashed_password

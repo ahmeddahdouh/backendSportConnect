@@ -66,10 +66,8 @@ def get_events_sorted_by_date():
     """
     latitude = request.args.get('latitude', type=float)
     longitude = request.args.get('longitude', type=float)
-    return_all_events = request.args.get('all', type=float)
-    user_id = request.args.get('user_id', type=float)
 
-    return event_service.get_events_sorted_by_date(latitude, longitude,return_all_events,user_id)
+    return event_service.get_events_sorted_by_date(latitude, longitude)
 
 
 
@@ -127,6 +125,7 @@ def unparticipate_event(event_id: int):
         return jsonify({"error": str(fe)}), 409
 
 @event_bp.route("/<int:event_id>", methods=["GET"])
+@jwt_required()
 def get_event_by_id(event_id):
     """
     Récupère les détails d'un événement par son identifiant.

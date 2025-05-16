@@ -55,9 +55,9 @@ class EventService:
 
         return jsonify(events_to_return)
 
-    def get_events_sorted_by_date(self, latitude=None, longitude=None,return_all_events = False,user_id=None):
+    def get_events_sorted_by_date(self, latitude=None, longitude=None):
         if latitude is not None and longitude is not None:
-            events = self.event_repository.get_events_sorted_by_distance_and_date(latitude, longitude,return_all_events,user_id)
+            events = self.event_repository.get_events_sorted_by_distance_and_date(latitude, longitude)
         else:
             events = self.event_repository.get_events_sorted_by_date()
 
