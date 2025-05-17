@@ -24,7 +24,7 @@ class UserService:
             abort(make_response(jsonify(message="Id organisateur n'existe pas"), 400))
 
         events_list = self.user_repository.get_events_by_user_id(user_id)
-        # Ajouter la liste des événements à la réponse utilisateur
+        
         user_data = row2dict(user)
         user_data["events"] =  [row2dict(event) for event in events_list]
         user_data["age"] = user.age

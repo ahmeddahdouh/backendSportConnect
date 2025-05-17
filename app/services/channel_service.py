@@ -14,9 +14,9 @@ class ChannelService:
 
         new_channel = Channel(name=name, event_id=event_id, admin_id=admin_id)
         db.session.add(new_channel)
-        db.session.flush()  # pour avoir l'id
+        db.session.flush()  
 
-        # Ajouter l'admin comme membre
+        
         member = ChannelMember(channel_id=new_channel.id, user_id=admin_id)
         db.session.add(member)
         db.session.commit()

@@ -49,7 +49,7 @@ def create_admin():
 
     return jsonify({"message": "Admin créé avec succès"}), 201
 
-# supression de l'admin
+
 @admin_admin_bp.route("/admins/<int:id>", methods=["DELETE"])
 def delete_admin(id):
     admin = Admin.query.get(id)

@@ -1,4 +1,3 @@
-# 📄 app/services/event_service.py
 import uuid
 import os
 from datetime import datetime
@@ -30,7 +29,7 @@ class EventService:
 
         event = self.event_repository.add_event(event_data)
 
-        # ✅ Créer automatiquement le canal de chat
+        
         self.channel_service.create_channel(
             name=f"Canal - {event.event_name}",
             event_id=event.id,
@@ -103,7 +102,6 @@ class EventService:
 
         self.event_repository.add_user_to_event(user_id, event_id)
 
-        # ✅ Ajouter au canal automatiquement
         self.channel_service.add_member(event_id, user_id)
 
         return {"message": "Utilisateur ajouté à l'événement avec succès"}
@@ -115,7 +113,7 @@ class EventService:
 
         try:
             self.event_repository.delete_participation(participation_db)
-            # ⚠️ Suppression du membre non automatique ici (doit être admin côté client)
+        
             return {"message": "Utilisateur désinscrit de l'événement avec succès"}
         except Exception as e:
             raise FileExistsError("Erreur lors de la suppression du registrement")

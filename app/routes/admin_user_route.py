@@ -1,5 +1,3 @@
-#ici admin administre les users
-
 from flask import Blueprint, jsonify
 from app.models.user import User
 from app.models.event import Event
@@ -25,7 +23,7 @@ def get_users():
     return jsonify(users_data)
 
 
-# supression de l'utilisateur
+
 
 @admin_user_bp.route("/users/<int:user_id>", methods=["DELETE"])
 def delete_user(user_id):
@@ -34,12 +32,11 @@ def delete_user(user_id):
     if not user:
         return jsonify({"message": "Utilisateur introuvable"}), 404
 
-    # Mettre à jour tous les événements liés
+    
     events = Event.query.filter_by(id_gestionnaire=user.id).all()
     for event in events:
          db.session.delete(event)
 
-    # Ensuite, suppression de l'utilisateur
     db.session.delete(user)
     db.session.commit()
 

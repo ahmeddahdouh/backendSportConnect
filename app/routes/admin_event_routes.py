@@ -1,5 +1,3 @@
-#ici admin administre les events
-
 
 from flask import Blueprint, jsonify
 from app.models.event import Event

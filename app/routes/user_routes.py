@@ -23,7 +23,7 @@ auth_bp = Blueprint("auth", __name__)
 @swag_from('../../static/docs/add_user_docs.yaml')
 def register():
     data = request.get_json()
-    # Récupération des champs requis
+    
     username = data.get("username")
     email = data.get("email")
     password = data.get("password")
@@ -34,15 +34,13 @@ def register():
     phone = data.get("phone")
     age = data.get("age")
 
-    # Vérification des champs obligatoires
+    
     if not all([username, email, password, confirm_password, firstname, familyname, city, phone, age]):
         return jsonify({"message": "Missing data"}), 400
 
-    # Vérification de la correspondance des mots de passe
     if password != confirm_password:
         return jsonify({"message": "Passwords do not match"}), 400
 
-    # Vérification que l'âge est bien un entier positif
     try:
         age = int(age)
         if age <= 0:
@@ -50,10 +48,8 @@ def register():
     except ValueError:
         return jsonify({"message": "Age must be an integer"}), 400
 
-    # Hachage du mot de passe
     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
-    # Création de l'utilisateur
     user = User(
         username=username,
         email=email,
@@ -66,7 +62,7 @@ def register():
     )
 
     try:
-        # Tentative d'ajout de l'utilisateur à la base de données
+    
         db.session.add(user)
         db.session.commit()
         return jsonify({"message": "User registered successfully"}), 201
@@ -78,7 +74,7 @@ def register():
         return jsonify({"message": f"An error occurred: {str(e)}"}), 500
 
 
-@auth_bp.route("users/<int:user_id>/sports", methods=["GET"]) #Obtenir la liste des sports joués par un joueur, et ses stats dans chaque sport
+@auth_bp.route("users/<int:user_id>/sports", methods=["GET"]) 
 def get_sports(user_id):
     user_sports = UserSports.query.filter_by(user_id=user_id).all()
     user = User.query.get(user_id)
@@ -99,7 +95,7 @@ def get_sports(user_id):
             "familyname": user.familyname,"sports": sports_data}, 200
 
 
-@auth_bp.route("users/sports", methods=["POST"]) #On envoie un id user, un id sport, et un json (même vide) de stat
+@auth_bp.route("users/sports", methods=["POST"]) 
 def add_sport():
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
@@ -123,7 +119,7 @@ def add_sport():
     return {"message": "Sport added successfully."}, 201
 
 
-@auth_bp.route("users/sports/<int:sport_id>", methods=["PUT"])  #changer les stats d'un user pour un sport précis
+@auth_bp.route("users/sports/<int:sport_id>", methods=["PUT"])  
 def update_sport_stat(sport_id):
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
@@ -141,7 +137,7 @@ def update_sport_stat(sport_id):
     return {"message": "Sport stats updated successfully."}, 200
 
 
-@auth_bp.route("users/sports/<int:sport_id>", methods=["DELETE"]) #suppression d'un sport joué
+@auth_bp.route("users/sports/<int:sport_id>", methods=["DELETE"]) 
 def delete_sport(sport_id):
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
@@ -156,16 +152,14 @@ def delete_sport(sport_id):
 
     return {"message": "Sport removed successfully."}, 200
 
-@auth_bp.route("/users/<int:user_id>", methods=["PUT"]) #modification des informations de l'utilisateur
+@auth_bp.route("/users/<int:user_id>", methods=["PUT"]) 
 def update_user(user_id):
     data = request.get_json()
 
-    # Récupérer l'utilisateur
     user = User.query.get(user_id)
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    # Mise à jour des champs s'ils sont fournis
     if "username" in data:
         user.username = data["username"]
     if "email" in data:
@@ -190,7 +184,6 @@ def update_user(user_id):
         user.password = hashed_password
 
     try:
-        # Sauvegarde en base de données
         db.session.commit()
         return jsonify({"message": "User updated successfully"}), 200
     except IntegrityError:
@@ -270,10 +263,9 @@ def get_user_by_id(user_id: int):
     if not user:
         abort(make_response(jsonify(message="Id organisateur n'existe pas"), 400))
 
-    # Récupérer tous les événements auxquels l'utilisateur participe
+    
     events = Event.query.join(EventUsers).filter(EventUsers.user_id == user_id).all()
 
-    # Construire la liste des événements
     events_list = [
         {
             "id": event.id,
@@ -291,7 +283,7 @@ def get_user_by_id(user_id: int):
         for event in events
     ]
 
-    # Ajouter la liste des événements à la réponse utilisateur
+    
     user_data = row2dict(user)
     user_data["events"] = events_list
 

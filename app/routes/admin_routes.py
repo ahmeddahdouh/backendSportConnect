@@ -28,13 +28,11 @@ def admin_login():
         return jsonify({"error": "Admin introuvable"}), 404
 
     try:
-        # Vérifie si le mot de passe en BDD est hashé (commence souvent par $2b$)
+        
         if admin.password.startswith('$2b$'):
-            # Mot de passe hashé → vérifier avec bcrypt
             if not bcrypt.checkpw(password.encode("utf-8"), admin.password.encode("utf-8")):
                 return jsonify({"error": "Mot de passe incorrect"}), 401
         else:
-            # Mot de passe en clair (temporaire) → comparer directement
             if password != admin.password:
                 return jsonify({"error": "Mot de passe incorrect"}), 401
     except Exception as e:
