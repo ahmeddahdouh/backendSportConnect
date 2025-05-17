@@ -5,6 +5,7 @@ from app.controllers.team_routes import team_bp
 from app.controllers.user_routes import auth_bp
 from app.controllers.event_routes import event_bp
 from app.controllers.sport_routes import sport_bp
+from app.routes.channel_routes import channel_bp
 from config import Config, db
 from flasgger import Swagger
 from flask_cors import CORS
@@ -30,6 +31,7 @@ def create_app():
     # declaration de
     swagger = Swagger(app)
     JWTManager(app)
+    CORS(app, resources={r"/chat/*": {"origins": "http://localhost:3000"}})
     CORS(app, resources={r"/auth/*": {"origins": "http://localhost:3000"}})
     app.config["SQLALCHEMY_DATABASE_URI"] = Config.DATABASE_URL
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -42,4 +44,5 @@ def create_app():
     app.register_blueprint(event_bp, url_prefix="/event")
     app.register_blueprint(sport_bp, url_prefix="/sport")
     app.register_blueprint(team_bp, url_prefix="/team")
+    app.register_blueprint(channel_bp, url_prefix="/chat")
     return app
