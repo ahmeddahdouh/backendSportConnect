@@ -6,6 +6,7 @@ from app.controllers.user_routes import auth_bp
 from app.controllers.event_routes import event_bp
 from app.controllers.sport_routes import sport_bp
 from app.routes.notification_routes import notification_bp
+from app.routes.event_invitation_routes import event_invitation_bp
 from config import Config, db
 from flasgger import Swagger
 from flask_cors import CORS
@@ -72,5 +73,6 @@ def create_app(testing=False):
         app.register_blueprint(sport_bp, url_prefix="/sport")
         app.register_blueprint(team_bp, url_prefix="/team")
         app.register_blueprint(notification_bp, url_prefix="/notification")
+        app.register_blueprint(event_invitation_bp, url_prefix="/event-invitation")
     
     return app

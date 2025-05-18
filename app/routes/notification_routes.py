@@ -22,7 +22,10 @@ def get_notifications():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": "Internal server error"}), 500
+        import traceback
+        print(f"Exception in route: {e}")
+        traceback.print_exc()
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
 @notification_bp.route("/<int:notification_id>/read", methods=["PUT"])
 @jwt_required()
@@ -38,7 +41,10 @@ def mark_as_read(notification_id):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": "Internal server error"}), 500
+        import traceback
+        print(f"Exception in route: {e}")
+        traceback.print_exc()
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
 @notification_bp.route("/read-all", methods=["PUT"])
 @jwt_required()
@@ -54,7 +60,10 @@ def mark_all_as_read():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": "Internal server error"}), 500
+        import traceback
+        print(f"Exception in route: {e}")
+        traceback.print_exc()
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
 @notification_bp.route("/<int:notification_id>", methods=["DELETE"])
 @jwt_required()
@@ -70,7 +79,10 @@ def delete_notification(notification_id):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": "Internal server error"}), 500
+        import traceback
+        print(f"Exception in route: {e}")
+        traceback.print_exc()
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
 @notification_bp.route("/", methods=["DELETE"])
 @jwt_required()
@@ -86,4 +98,7 @@ def delete_all_notifications():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": "Internal server error"}), 500 
+        import traceback
+        print(f"Exception in route: {e}")
+        traceback.print_exc()
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500 
