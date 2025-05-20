@@ -27,7 +27,19 @@ def create_app():
     CORS(app)
     app.config["UPLOAD_FOLDER"] = os.path.abspath("uploads")
     app.config["TEAM_PHOTOS_FOLDER"] = os.path.abspath(TEAM_PHOTOS_FOLDER)
-    # declaration de
+    app.config['SWAGGER'] = {
+        'title': 'JWT API',
+        'uiversion': 3,
+        'securityDefinitions': {
+            'Bearer': {
+                'type': 'apiKey',
+                'name': 'Authorization',
+                'in': 'header',
+                'description': 'Enter your JWT token like this: Bearer <your-token>'
+            }
+        },
+        'security': [{'Bearer': []}]
+    }
     swagger = Swagger(app)
     JWTManager(app)
     CORS(app, resources={r"/auth/*": {"origins": "http://localhost:3000"}})

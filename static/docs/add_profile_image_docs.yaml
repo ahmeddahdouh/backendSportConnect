@@ -1,0 +1,21 @@
+parameters:
+  - in: formData
+    name: file
+    type: file
+    required: true
+    description: Le fichier image de profil à télécharger.
+responses:
+  '201':
+    description: Image de profil mise à jour avec succès.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            image:
+              type: string
+              example: "profile_image_updated.jpg"
+  '400':
+    description: Fichier manquant ou nom de fichier vide.
+  '500':
+    description: Erreur lors de la mise à jour de l'image de profil.

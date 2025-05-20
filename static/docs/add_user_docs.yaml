@@ -1,4 +1,3 @@
----
 parameters:
   - in: body
     name: body
@@ -9,12 +8,11 @@ parameters:
         - username
         - email
         - password
-        - confirmPassword
         - firstname
         - familyname
         - city
         - phone
-        - age
+        - date_of_birth
       properties:
         username:
           type: string
@@ -26,26 +24,44 @@ parameters:
           type: string
           format: password
           example: "securepassword123"
-        confirmPassword:
-          type: string
-          format: password
-          example: "securepassword123"
         firstname:
           type: string
           example: "John"
         familyname:
           type: string
           example: "Doe"
+        address:
+          type: string
+          example: "123 Rue de Paris"
+        postal_code:
+          type: string
+          example: "75001"
         city:
           type: string
           example: "Paris"
+        latitude:
+          type: number
+          format: float
+          example: 48.8566
+        longitude:
+          type: number
+          format: float
+          example: 2.3522
         phone:
           type: string
           example: "+33123456789"
-        age:
-          type: integer
-          example: 25
-
+        date_of_birth:
+          type: string
+          format: date
+          example: "1990-01-01"
+        bibliography:
+          type: string
+          example: "Author of several books on technology."
+        interests:
+          type: array
+          items:
+            type: string
+          example: ["Technology", "Travel", "Music"]
 responses:
   '201':
     description: User created successfully.
@@ -80,3 +96,5 @@ responses:
               example: 25
   '400':
     description: Error with the provided data.
+  '409':
+    description: Conflict (e.g., email or username already exists).
