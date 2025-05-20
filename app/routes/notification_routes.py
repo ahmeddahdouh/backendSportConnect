@@ -12,7 +12,7 @@ def get_notifications():
     """Get all notifications for the current user"""
     current_user = get_jwt_identity()
     current_user_json = json.loads(current_user)
-    user_id = current_user_json["id"]
+    user_id = int(current_user_json["id"])
     
     unread_only = request.args.get("unread_only", "false").lower() == "true"
     

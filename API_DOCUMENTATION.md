@@ -125,6 +125,35 @@ Authorization: Bearer <your_token>
     }
     ```
 
+- **GET** `/auth/users/phone/<phone>`
+  - Get user information by phone number
+  - Response (200 OK):
+    ```json
+    {
+      "id": "integer",
+      "username": "string",
+      "email": "string",
+      "firstname": "string",
+      "familyname": "string",
+      "city": "string",
+      "phone": "string",
+      "date_of_birth": "YYYY-MM-DD",
+      "profileImage": "string",
+      "address": "string",
+      "postal_code": "string",
+      "latitude": "float",
+      "longitude": "float",
+      "bibliography": "string",
+      "interests": ["string"]
+    }
+    ```
+  - Response (404 Not Found):
+    ```json
+    {
+      "message": "User not found"
+    }
+    ```
+
 ### Event Routes (`/event`)
 
 #### Event Management

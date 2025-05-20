@@ -294,3 +294,44 @@ def get_user_by_id(user_id: int):
     return jsonify(user_data)
 
 
+@auth_bp.route("/users/phone/<phone>", methods=["GET"])
+def get_user_by_phone(phone):
+    """
+    Get user information by phone number.
+    
+    Args:
+        phone (str): The phone number to search for
+        
+    Returns:
+        JSON response with user data if found, 404 if not found
+    """
+    # Remove any spaces, dashes, or parentheses from the phone number
+    cleaned_phone = ''.join(filter(str.isdigit, phone))
+    
+    # Try to find the user with the exact phone number first
+    user = User.query.filter_by(phone=phone).first()
+    
+    # If not found, try with the cleaned phone number
+    if not user:
+        user = User.query.filter_by(phone=cleaned_phone).first()
+    
+    # If still not found, try a more flexible search
+    if not user:
+        # Try with + prefix
+        if not phone.startswith('+'):
+            user = User.query.filter_by(phone='+' + phone).first()
+        # Try without + prefix
+        elif phone.startswith('+'):
+            user = User.query.filter_by(phone=phone[1:]).first()
+    
+    if not user:
+        # Debug: Print all users' phone numbers to help diagnose the issue
+        all_users = User.query.all()
+        print("Available phone numbers in database:")
+        for u in all_users:
+            print(f"User {u.id}: {u.phone}")
+        return jsonify({"message": "User not found", "searched_phone": phone, "cleaned_phone": cleaned_phone}), 404
+        
+    return jsonify(row2dict(user)), 200
+
+
