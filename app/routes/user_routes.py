@@ -7,13 +7,13 @@ from config import db
 from sqlalchemy.exc import IntegrityError
 from flask import request,abort, make_response, jsonify, Blueprint, send_from_directory, current_app
 import bcrypt
-from . import row2dict
 from flasgger import swag_from
 import json
 from datetime import timedelta, datetime
 import uuid
 
 from ..associations.user_sports import UserSports
+from ..controllers import row2dict
 from ..models import Sport
 
 auth_bp = Blueprint("auth", __name__)
