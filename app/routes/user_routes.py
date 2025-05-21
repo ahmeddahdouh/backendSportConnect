@@ -7,13 +7,14 @@ from config import db
 from sqlalchemy.exc import IntegrityError
 from flask import request,abort, make_response, jsonify, Blueprint, send_from_directory, current_app
 import bcrypt
-from . import row2dict
 from flasgger import swag_from
 import json
-from datetime import timedelta
+from datetime import timedelta, datetime
 import uuid
+from app.controllers import row2dict
 
 from ..associations.user_sports import UserSports
+from ..controllers import row2dict
 from ..models import Sport
 
 auth_bp = Blueprint("auth", __name__)
@@ -32,28 +33,26 @@ def register():
     familyname = data.get("familyname")
     city = data.get("city")
     phone = data.get("phone")
-    age = data.get("age")
+    date_of_birth = data.get("date_of_birth")
 
     # Vérification des champs obligatoires
-    if not all([username, email, password, confirm_password, firstname, familyname, city, phone, age]):
+    if not all([username, email, password, confirm_password, firstname, familyname, city, phone, date_of_birth]):
         return jsonify({"message": "Missing data"}), 400
 
     # Vérification de la correspondance des mots de passe
     if password != confirm_password:
         return jsonify({"message": "Passwords do not match"}), 400
 
-    # Vérification que l'âge est bien un entier positif
+    # Vérification du format de la date de naissance
     try:
-        age = int(age)
-        if age <= 0:
-            return jsonify({"message": "Invalid age"}), 400
+        date_of_birth = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
     except ValueError:
-        return jsonify({"message": "Age must be an integer"}), 400
+        return jsonify({"message": "Invalid date format. Use YYYY-MM-DD"}), 400
 
     # Hachage du mot de passe
     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
-    # Création de l'utilisateur
+    # Création de l'utilisateur avec les champs nécessaires uniquement
     user = User(
         username=username,
         email=email,
@@ -62,7 +61,7 @@ def register():
         familyname=familyname,
         city=city,
         phone=phone,
-        age=age
+        date_of_birth=date_of_birth
     )
 
     try:
@@ -178,13 +177,11 @@ def update_user(user_id):
         user.city = data["city"]
     if "phone" in data:
         user.phone = data["phone"]
-    if "age" in data:
+    if "date_of_birth" in data:
         try:
-            user.age = int(data["age"])
-            if user.age <= 0:
-                return jsonify({"message": "Invalid age"}), 400
+            user.date_of_birth = datetime.strptime(data["date_of_birth"], "%Y-%m-%d").date()
         except ValueError:
-            return jsonify({"message": "Age must be an integer"}), 400
+            return jsonify({"message": "Invalid date format. Use YYYY-MM-DD"}), 400
     if "password" in data:
         hashed_password = bcrypt.hashpw(data["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         user.password = hashed_password
@@ -214,7 +211,7 @@ def login():
             access_token = create_access_token(identity=
                                                json.dumps({'username': user.username,
                                                            'id': user.id,
-                                                           'profileImage': user.profileImage,
+                                                           'profileImage': user.profile_image,
                                                            }
                                                           ),
                                                expires_delta=timedelta(hours=1))
@@ -261,6 +258,50 @@ def update_profile_image():
     db.session.commit()
 
     return jsonify({"image":user.profileImage}), 201
+
+
+@auth_bp.route("/users/phone/<phone>", methods=["GET"])
+def get_user_by_phone(phone):
+    """
+    Get user information by phone number.
+    
+    Args:
+        phone (str): The phone number to search for
+        
+    Returns:
+        JSON response with user data if found, 404 if not found
+    """
+    # Convert phone to string to ensure consistent type
+    phone = str(phone)
+    
+    # Remove any spaces, dashes, or parentheses from the phone number
+    cleaned_phone = ''.join(filter(str.isdigit, phone))
+    
+    # Try to find the user with the exact phone number first
+    user = User.query.filter_by(phone=phone).first()
+    
+    # If not found, try with the cleaned phone number
+    if not user:
+        user = User.query.filter_by(phone=cleaned_phone).first()
+    
+    
+    if not user:
+        # Debug: Print all users' phone numbers to help diagnose the issue
+        all_users = User.query.all()
+        print("\nAvailable phone numbers in database:")
+        for u in all_users:
+            print(f"User {u.id}: {u.phone} (type: {type(u.phone)})")
+        return jsonify({
+            "message": "User not found", 
+            "searched_phone": phone, 
+            "cleaned_phone": cleaned_phone,
+            "debug_info": {
+                "phone_type": str(type(phone)),
+                "cleaned_phone_type": str(type(cleaned_phone))
+            }
+        }), 404
+        
+    return jsonify(row2dict(user)), 200
 
 
 @auth_bp.route("/users/<int:user_id>", methods=["GET"])

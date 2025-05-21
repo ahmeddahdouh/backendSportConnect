@@ -30,6 +30,7 @@ def register():
 
 
 @auth_bp.route("/users/<int:user_id>", methods=["PUT"])
+@swag_from("../../static/docs/update_user_docs.yaml")
 def update_user(user_id):
     """
     Met à jour les informations d'un utilisateur existant.
@@ -50,6 +51,7 @@ def update_user(user_id):
 
 
 @auth_bp.route("/login", methods=["POST"])
+@swag_from("../../static/docs/login.yaml")
 def login():
     """
     Authentifie un utilisateur.
@@ -70,14 +72,18 @@ def login():
 
 @auth_bp.route("/users", methods=["GET"])
 @jwt_required()
+@swag_from("../../static/docs/get_users_docs.yaml")
 def get_users():
+
     """
     Récupère la liste de tous les utilisateurs.
 
     Cette route nécessite une authentification JWT.
     Retourne un tableau JSON d'utilisateurs.
     """
+    print(request.headers)
     users = user_service.get_users()
+
     return jsonify(users), 200
 
 
@@ -102,6 +108,7 @@ def uploaded_event_photos(filename):
 
 @auth_bp.route("/users/profile", methods=["PUT"])
 @jwt_required()
+@swag_from("../../static/docs/add_profile_image_docs.yaml")
 def update_profile_image():
     """
     Met à jour l'image de profil de l'utilisateur authentifié.

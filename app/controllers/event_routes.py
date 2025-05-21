@@ -75,6 +75,7 @@ def get_events_sorted_by_date():
 
 
 
+
 @event_bp.route("/curentEvents", methods=["GET"])
 @jwt_required()
 def get_curent_user_events():

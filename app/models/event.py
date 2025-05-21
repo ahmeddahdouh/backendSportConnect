@@ -1,6 +1,6 @@
 from sqlalchemy.dialects.postgresql import JSONB
 from config import db
-from datetime import datetime
+from datetime import datetime, UTC
 
 class Event(db.Model):
     __tablename__ = "events"
@@ -37,7 +37,7 @@ class Event(db.Model):
     event_commande_participation = db.Column(db.String, nullable=True)
     commodites = db.Column(JSONB, nullable=True)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     users = db.relationship("User", secondary="event_users", back_populates="events")
 

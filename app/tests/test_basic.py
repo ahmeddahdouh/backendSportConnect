@@ -1,24 +1,13 @@
 import pytest
 from app import create_app
-from flask import Flask
-from app.controllers.sport_routes import sport_bp
-from config import db
 
 @pytest.fixture
-def app():
-    app = create_app()
-    app.config['TESTING'] = True
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-@pytest.fixture
-def client(app):
+def client():
+    app = create_app(testing=True)
     return app.test_client()
 
-def test_hello_world(client):
-    response = client.get("/sport/")
+def test_test_route(client):
+    response = client.get('/test')
     assert response.status_code == 200
+    json_data = response.get_json()
+    assert json_data['message'] == 'Test route works!' 
