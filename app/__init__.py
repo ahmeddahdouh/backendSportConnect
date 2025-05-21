@@ -46,7 +46,7 @@ def create_app(testing=False):
                 "allow_headers": ["Content-Type", "Authorization"],
                 "expose_headers": ["Content-Type", "Authorization"],
                 "supports_credentials": True,
-                "max_age": 3600
+                "max_age": 3600,
                 "vary_header": True
             }
         })
