@@ -18,6 +18,48 @@ from ..models import Sport
 
 auth_bp = Blueprint("auth", __name__)
 
+print("Registering routes...")  # Debug print
+print(f"Blueprint name: {auth_bp.name}")  # Debug print
+print(f"Blueprint url_prefix: {auth_bp.url_prefix}")  # Debug print
+
+@auth_bp.route("/test", methods=["GET"])
+def test_route():
+    print("Test route was called!")  # Debug print
+    return jsonify({"message": "Test route works!"}), 200
+
+@auth_bp.route("/phone", methods=["GET"])
+@jwt_required()
+def get_user_by_phone():
+    """
+    Get user information by phone number.
+    """
+    try:
+        phone = "52919063"  # Hardcoded for testing
+        
+        # Get all users and their phone numbers
+        all_users = User.query.all()
+        print(f"Found {len(all_users)} users in database")  # Debug print
+        
+        # Try to find the user with the exact phone number
+        user = User.query.filter_by(phone=phone).first()
+        print(f"Searching for phone: {phone}")  # Debug print
+        
+        if not user:
+            return jsonify({
+                "message": "User not found",
+                "debug_info": {
+                    "searched_phone": phone,
+                    "database_phones": [{"id": u.id, "phone": u.phone} for u in all_users]
+                }
+            }), 404
+            
+        return jsonify(row2dict(user)), 200
+    except Exception as e:
+        print(f"Error in get_user_by_phone: {str(e)}")  # Debug print
+        return jsonify({
+            "message": "Error processing phone number",
+            "error": str(e)
+        }), 500
 
 @auth_bp.route("/register", methods=["POST"])
 @swag_from('../../static/docs/add_user_docs.yaml')
@@ -292,46 +334,5 @@ def get_user_by_id(user_id: int):
     user_data["events"] = events_list
 
     return jsonify(user_data)
-
-
-@auth_bp.route("/users/phone/<phone>", methods=["GET"])
-def get_user_by_phone(phone):
-    """
-    Get user information by phone number.
-    
-    Args:
-        phone (str): The phone number to search for
-        
-    Returns:
-        JSON response with user data if found, 404 if not found
-    """
-    # Remove any spaces, dashes, or parentheses from the phone number
-    cleaned_phone = ''.join(filter(str.isdigit, phone))
-    
-    # Try to find the user with the exact phone number first
-    user = User.query.filter_by(phone=phone).first()
-    
-    # If not found, try with the cleaned phone number
-    if not user:
-        user = User.query.filter_by(phone=cleaned_phone).first()
-    
-    # If still not found, try a more flexible search
-    if not user:
-        # Try with + prefix
-        if not phone.startswith('+'):
-            user = User.query.filter_by(phone='+' + phone).first()
-        # Try without + prefix
-        elif phone.startswith('+'):
-            user = User.query.filter_by(phone=phone[1:]).first()
-    
-    if not user:
-        # Debug: Print all users' phone numbers to help diagnose the issue
-        all_users = User.query.all()
-        print("Available phone numbers in database:")
-        for u in all_users:
-            print(f"User {u.id}: {u.phone}")
-        return jsonify({"message": "User not found", "searched_phone": phone, "cleaned_phone": cleaned_phone}), 404
-        
-    return jsonify(row2dict(user)), 200
 
 

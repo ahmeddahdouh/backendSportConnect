@@ -60,3 +60,30 @@ class UserRepository:
 
     def get_user_by_username(self, username):
         return User.query.filter_by(username=username).first()
+
+    def get_user_by_phone(self, phone):
+        """
+        Get user by phone number.
+        
+        Args:
+            phone (str): The phone number to search for
+            
+        Returns:
+            User: User object if found, None otherwise
+        """
+        # Try different formats
+        formats_to_try = [
+            phone,                    # Original
+            phone.lstrip('0'),        # Without leading zeros
+            '+' + phone,              # With + prefix
+            phone.lstrip('+'),        # Without + prefix
+            ''.join(filter(str.isdigit, phone))  # Only digits
+        ]
+        
+        # Try each format
+        for fmt in formats_to_try:
+            user = User.query.filter_by(phone=fmt).first()
+            if user:
+                return user
+                
+        return None

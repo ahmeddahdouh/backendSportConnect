@@ -86,7 +86,7 @@ def uploaded_file(filename):
     """
     Sert un fichier téléchargé depuis le dossier d'upload.
 
-    Prend le nom du fichier en paramètre et retourne le fichier s’il existe.
+    Prend le nom du fichier en paramètre et retourne le fichier s'il existe.
     """
     return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
 
@@ -95,7 +95,7 @@ def uploaded_event_photos(filename):
     """
     Sert un fichier téléchargé depuis le dossier d'upload.
 
-    Prend le nom du fichier en paramètre et retourne le fichier s’il existe.
+    Prend le nom du fichier en paramètre et retourne le fichier s'il existe.
     """
     return send_from_directory(current_app.config["TEAM_PHOTOS_FOLDER"], filename)
 
@@ -126,9 +126,42 @@ def update_profile_image():
 @auth_bp.route("/users/<int:user_id>", methods=["GET"])
 def get_user_by_id(user_id: int):
     """
-    Récupère les informations d’un utilisateur via son identifiant.
+    Récupère les informations d'un utilisateur via son identifiant.
 
     Retourne les données utilisateur sous forme JSON.
     """
     user = user_service.get_user_by_id(user_id)
     return user
+
+@auth_bp.route("/users/phone", methods=["GET"])
+@jwt_required()
+def get_user_by_phone():
+    """
+    Get user information by phone number.
+    
+    Query Parameters:
+        phone (str): The phone number to search for
+        
+    Returns:
+        JSON response with user data if found, 404 if not found
+    """
+    try:
+        phone = request.args.get('phone')
+        if not phone:
+            return jsonify({
+                "message": "Phone number is required",
+                "error": "Missing phone parameter"
+            }), 400
+            
+        user = user_service.get_user_by_phone(phone)
+        return jsonify(user), 200
+    except ValueError as e:
+        return jsonify({
+            "message": "User not found",
+            "error": str(e)
+        }), 404
+    except Exception as e:
+        return jsonify({
+            "message": "Error processing phone number",
+            "error": str(e)
+        }), 500

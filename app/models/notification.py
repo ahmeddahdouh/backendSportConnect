@@ -25,5 +25,9 @@ class Notification(db.Model):
             "type": self.type,
             "content": self.content,
             "is_read": self.is_read,
-            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
+            "sender": {
+                "name": f"{self.sender.firstname} {self.sender.familyname}",
+                "profile_image": self.sender.profile_image
+            } if self.sender else None
         } 

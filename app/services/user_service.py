@@ -30,6 +30,24 @@ class UserService:
         user_data["age"] = user.age
         return jsonify(user_data)
 
+    def get_user_by_phone(self, phone):
+        """
+        Get user information by phone number.
+        
+        Args:
+            phone (str): The phone number to search for
+            
+        Returns:
+            dict: User data if found
+            
+        Raises:
+            ValueError: If user is not found
+        """
+        user = self.user_repository.get_user_by_phone(phone)
+        if not user:
+            raise ValueError("User not found")
+        return row2dict(user)
+
     def create_user(self, data):
         try:
             data["password"] = bcrypt.hashpw(data["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")

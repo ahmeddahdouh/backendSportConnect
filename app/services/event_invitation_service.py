@@ -11,18 +11,18 @@ class EventInvitationService:
         self.notification_service = NotificationService()
 
     def invite_user_to_event(self, event_id, user_id, sender_id):
-        """Invite a user to a private event"""
-        # Verify event exists and is private
+        """Invite a user to an event"""
+        # Verify event exists
         event = self.event_repository.get_event_by_id(event_id)
         if not event:
             raise ValueError("Event not found")
-        if not event.is_private:
-            raise ValueError("Cannot invite users to non-private events")
 
         # Verify users exist
-        if not self.user_repository.get_user_by_id(user_id):
+        recipient = self.user_repository.get_user_by_id(user_id)
+        if not recipient:
             raise ValueError("Recipient user not found")
-        if not self.user_repository.get_user_by_id(sender_id):
+        sender = self.user_repository.get_user_by_id(sender_id)
+        if not sender:
             raise ValueError("Sender user not found")
 
         # Check if user is already invited
@@ -39,7 +39,9 @@ class EventInvitationService:
             "event_id": event_id,
             "event_name": event.event_name,
             "invitation_id": invitation.id,
-            "sender_id": sender_id
+            "sender_id": sender_id,
+            "sender_name": f"{sender.firstname} {sender.familyname}",
+            "sender_image": sender.profile_image
         }
         self.notification_service.create_notification(
             user_id=user_id,
