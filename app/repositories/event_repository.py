@@ -31,6 +31,7 @@ class EventRepository:
 
 
     def get_events_sorted_by_distance_and_date(self, latitude, longitude,return_all_events,user_id):
+
         distance_expr = (
                 6371 * func.acos(
             func.cos(func.radians(latitude)) *
@@ -40,6 +41,7 @@ class EventRepository:
             func.sin(func.radians(Event.latitude))
         )
         ).label("distance")
+
         if(return_all_events and user_id):
             return (
             db.session.query(Event, distance_expr).
@@ -74,12 +76,13 @@ class EventRepository:
     def update_event(self):
         try:
             db.session.commit()
-        except IntegrityError as e:
+        except IntegrityError as e :
             db.session.rollback()
-            raise
+            raise IntegrityError(f'{e.orig if e.orig else e}')
         except Exception as e:
             db.session.rollback()
-            raise
+            raise e
+
 
 
 
