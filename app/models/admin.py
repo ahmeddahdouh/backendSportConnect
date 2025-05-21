@@ -13,3 +13,5 @@ class Admin(db.Model):
     city = db.Column(db.String(200), nullable=False)
     phone = db.Column(db.String(200), nullable=False)
     age = db.Column(db.Integer, nullable=False)
+    #date_of_birth = db.Column(db.Date, nullable=False)
+

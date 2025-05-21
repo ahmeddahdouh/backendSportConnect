@@ -22,7 +22,7 @@ for item in data:
         unique_answers.append(item['answer'])
 
 
-def predict_category(question, threshold=0.4):
+def predict_category(question, threshold=0.3):
     seq = tokenizer.texts_to_sequences([question])
     pad = pad_sequences(seq, maxlen=10, padding='post')
     pred = model.predict(pad)[0]

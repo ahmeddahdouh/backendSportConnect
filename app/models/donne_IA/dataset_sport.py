@@ -201,7 +201,7 @@ data = [
     {"question": "quel est ton passe-temps favori ?", "answer": "Je suis un chatbot, je n'ai pas de passe-temps."},
     {"question": "quel est ton loisir favori ?", "answer": "Je suis un chatbot, je n'ai pas de loisirs."},
     {"question": "football", "answer": "Le football est un sport d'équipe joué entre deux équipes de onze joueurs."},
-    {"question": "basketball", "answer": "Le basketball est un sport d'équipe joué entre deux équipes de cinq joueurs."},
+    {"question": "doute", "answer": "Je ne suis pas sûr de comprendre. Peux-tu reformuler ?"},
     {"question": "tennis", "answer": "Le tennis est un sport individuel ou en double joué sur un court."},
     {"question": "rugby", "answer": "Le rugby est un sport d'équipe joué entre deux équipes de quinze joueurs."},
     {"question": "baseball", "answer": "Le baseball est un sport d'équipe joué entre deux équipes de neuf joueurs."},
@@ -298,7 +298,9 @@ data = [
     {"question": "parle moi de rugby à XIII", "answer": "Le rugby à XIII est un sport d'équipe joué entre deux équipes de treize joueurs."},
     {"question": "parle moi de rugby à XV", "answer": "Le rugby à XV est un sport d'équipe joué entre deux équipes de quinze joueurs."},
     {"question": "parle moi de football américain", "answer": "Le football américain est un sport d'équipe joué entre deux équipes de onze joueurs."},
-    {"question": "parle moi de cricket", "answer": "Le cricket est un sport d'équipe joué entre deux équipes de onze joueurs."}
+    {"question": "parle moi de cricket", "answer": "Le cricket est un sport d'équipe joué entre deux équipes de onze joueurs."},
+    {"question": "basketball", "answer": "Le basketball est un sport d'équipe joué entre deux équipes de cinq joueurs."}
+
 ]
 
 sport_list = ['football', 'tennis', 'basketball', 'rugby', 'natation', 'cyclisme', 'athlétisme', 'handball', 'volley', 'golf']
