@@ -1,23 +1,17 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-import json
-from app.services.notification_service import NotificationService
+from app.services.notification_route_service import NotificationRouteService
 
 notification_bp = Blueprint("notification", __name__)
-notification_service = NotificationService()
+notification_route_service = NotificationRouteService()
 
 @notification_bp.route("/", methods=["GET"])
 @jwt_required()
 def get_notifications():
     """Get all notifications for the current user"""
-    current_user = get_jwt_identity()
-    current_user_json = json.loads(current_user)
-    user_id = int(current_user_json["id"])
-    
-    unread_only = request.args.get("unread_only", "false").lower() == "true"
-    
     try:
-        notifications = notification_service.get_user_notifications(user_id, unread_only)
+        current_user = get_jwt_identity()
+        notifications = notification_route_service.get_notifications(current_user)
         return jsonify(notifications), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -31,13 +25,10 @@ def get_notifications():
 @jwt_required()
 def mark_as_read(notification_id):
     """Mark a notification as read"""
-    current_user = get_jwt_identity()
-    current_user_json = json.loads(current_user)
-    user_id = current_user_json["id"]
-    
     try:
-        notification = notification_service.mark_notification_as_read(notification_id, user_id)
-        return jsonify(notification.to_dict()), 200
+        current_user = get_jwt_identity()
+        notification = notification_route_service.mark_as_read(notification_id, current_user)
+        return jsonify(notification), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
@@ -50,12 +41,9 @@ def mark_as_read(notification_id):
 @jwt_required()
 def mark_all_as_read():
     """Mark all notifications as read for the current user"""
-    current_user = get_jwt_identity()
-    current_user_json = json.loads(current_user)
-    user_id = current_user_json["id"]
-    
     try:
-        result = notification_service.mark_all_as_read(user_id)
+        current_user = get_jwt_identity()
+        result = notification_route_service.mark_all_as_read(current_user)
         return jsonify(result), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -69,12 +57,9 @@ def mark_all_as_read():
 @jwt_required()
 def delete_notification(notification_id):
     """Delete a notification"""
-    current_user = get_jwt_identity()
-    current_user_json = json.loads(current_user)
-    user_id = current_user_json["id"]
-    
     try:
-        result = notification_service.delete_notification(notification_id, user_id)
+        current_user = get_jwt_identity()
+        result = notification_route_service.delete_notification(notification_id, current_user)
         return jsonify(result), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -88,12 +73,9 @@ def delete_notification(notification_id):
 @jwt_required()
 def delete_all_notifications():
     """Delete all notifications for the current user"""
-    current_user = get_jwt_identity()
-    current_user_json = json.loads(current_user)
-    user_id = current_user_json["id"]
-    
     try:
-        result = notification_service.delete_all_notifications(user_id)
+        current_user = get_jwt_identity()
+        result = notification_route_service.delete_all_notifications(current_user)
         return jsonify(result), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
