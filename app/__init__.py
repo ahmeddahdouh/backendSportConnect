@@ -41,7 +41,9 @@ def create_app(testing=False):
         # Configuration CORS avancée de la branche dev
         CORS(app, resources={
             r"/*": {
-                "origins": ["http://localhost:3000"],
+                "origins": ["http://localhost:3000",
+                            "https://dev.sportconnect.janov.eu",
+                            "https://sportconnect.janov.eu"],
                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                 "allow_headers": ["Content-Type", "Authorization"],
                 "expose_headers": ["Content-Type", "Authorization"],
