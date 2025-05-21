@@ -36,7 +36,7 @@ def create_app(testing=False):
             app.logger.error(f"Failed to create upload directories: {e}")
             raise RuntimeError("Failed to create required upload directories")
         
-        # application des cors
+        # Configuration CORS avancée de la branche dev
         CORS(app, resources={
             r"/*": {
                 "origins": [
@@ -59,13 +59,34 @@ def create_app(testing=False):
 
         app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
         app.config["TEAM_PHOTOS_FOLDER"] = TEAM_PHOTOS_FOLDER
-        # declaration de
+        
+        # Configuration Swagger de la branche implémentation-des-test-unit-integ
+        app.config['SWAGGER'] = {
+            'title': 'JWT API',
+            'uiversion': 3,
+            'securityDefinitions': {
+                'Bearer': {
+                    'type': 'apiKey',
+                    'name': 'Authorization',
+                    'in': 'header',
+                    'description': 'Enter your JWT token like this: Bearer <your-token>'
+                }
+            },
+            'security': [{'Bearer': []}]
+        }
+        
         swagger = Swagger(app)
         JWTManager(app)
+        
+        app.config["SQLALCHEMY_DATABASE_URI"] = Config.DATABASE_URL
+        app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+        app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
         app.config.from_object(Config)
+        
         db.init_app(app)
         with app.app_context():
             db.create_all()
+            
         app.register_blueprint(auth_bp, url_prefix="/auth")
         app.register_blueprint(event_bp, url_prefix="/event")
         app.register_blueprint(sport_bp, url_prefix="/sport")

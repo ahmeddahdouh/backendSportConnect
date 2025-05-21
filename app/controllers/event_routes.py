@@ -66,8 +66,9 @@ def get_events_sorted_by_date():
     """
     latitude = request.args.get('latitude', type=float)
     longitude = request.args.get('longitude', type=float)
-
-    return event_service.get_events_sorted_by_date(latitude, longitude)
+    return_all_events = request.args.get('all', type=float)
+    user_id = request.args.get('user_id', type=float)
+    return event_service.get_events_sorted_by_date(latitude, longitude,return_all_events,user_id)
 
 
 
