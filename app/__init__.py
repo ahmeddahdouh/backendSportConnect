@@ -2,7 +2,7 @@ import os
 from flask import Flask, jsonify
 from flask_jwt_extended import JWTManager
 from app.controllers.team_routes import team_bp
-from app.controllers.user_routes import auth_bp
+from app.routes.user_routes import auth_bp
 from app.controllers.event_routes import event_bp
 from app.controllers.sport_routes import sport_bp
 from app.routes.notification_routes import notification_bp
@@ -41,22 +41,21 @@ def create_app(testing=False):
         # application des cors
         CORS(app, resources={
             r"/*": {
-                "origins": [
-                    "http://localhost:3000",
-                    "https://sportconnect-front-e283.vercel.app"
-                ],
+                "origins": ["http://localhost:3000"],
                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                 "allow_headers": ["Content-Type", "Authorization"],
-                "supports_credentials": True
+                "expose_headers": ["Content-Type", "Authorization"],
+                "supports_credentials": True,
+                "max_age": 3600
             }
         })
 
         @app.after_request
         def after_request(response):
-            response.headers.add('Access-Control-Allow-Origin', 'https://sportconnect-front-e283.vercel.app')
             response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
             response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
             response.headers.add('Access-Control-Allow-Credentials', 'true')
+            response.headers.add('Access-Control-Max-Age', '3600')
             return response
 
         app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER

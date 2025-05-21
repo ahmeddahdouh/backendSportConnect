@@ -7,11 +7,11 @@ from config import db
 from sqlalchemy.exc import IntegrityError
 from flask import request,abort, make_response, jsonify, Blueprint, send_from_directory, current_app
 import bcrypt
-from . import row2dict
 from flasgger import swag_from
 import json
 from datetime import timedelta, datetime
 import uuid
+from app.controllers import row2dict
 
 from ..associations.user_sports import UserSports
 from ..models import Sport
@@ -210,7 +210,7 @@ def login():
             access_token = create_access_token(identity=
                                                json.dumps({'username': user.username,
                                                            'id': user.id,
-                                                           'profileImage': user.profileImage,
+                                                           'profileImage': user.profile_image,
                                                            }
                                                           ),
                                                expires_delta=timedelta(hours=1))
@@ -259,6 +259,50 @@ def update_profile_image():
     return jsonify({"image":user.profileImage}), 201
 
 
+@auth_bp.route("/users/phone/<phone>", methods=["GET"])
+def get_user_by_phone(phone):
+    """
+    Get user information by phone number.
+    
+    Args:
+        phone (str): The phone number to search for
+        
+    Returns:
+        JSON response with user data if found, 404 if not found
+    """
+    # Convert phone to string to ensure consistent type
+    phone = str(phone)
+    
+    # Remove any spaces, dashes, or parentheses from the phone number
+    cleaned_phone = ''.join(filter(str.isdigit, phone))
+    
+    # Try to find the user with the exact phone number first
+    user = User.query.filter_by(phone=phone).first()
+    
+    # If not found, try with the cleaned phone number
+    if not user:
+        user = User.query.filter_by(phone=cleaned_phone).first()
+    
+    
+    if not user:
+        # Debug: Print all users' phone numbers to help diagnose the issue
+        all_users = User.query.all()
+        print("\nAvailable phone numbers in database:")
+        for u in all_users:
+            print(f"User {u.id}: {u.phone} (type: {type(u.phone)})")
+        return jsonify({
+            "message": "User not found", 
+            "searched_phone": phone, 
+            "cleaned_phone": cleaned_phone,
+            "debug_info": {
+                "phone_type": str(type(phone)),
+                "cleaned_phone_type": str(type(cleaned_phone))
+            }
+        }), 404
+        
+    return jsonify(row2dict(user)), 200
+
+
 @auth_bp.route("/users/<int:user_id>", methods=["GET"])
 def get_user_by_id(user_id: int):
     user = User.query.get(user_id)
@@ -292,46 +336,5 @@ def get_user_by_id(user_id: int):
     user_data["events"] = events_list
 
     return jsonify(user_data)
-
-
-@auth_bp.route("/users/phone/<phone>", methods=["GET"])
-def get_user_by_phone(phone):
-    """
-    Get user information by phone number.
-    
-    Args:
-        phone (str): The phone number to search for
-        
-    Returns:
-        JSON response with user data if found, 404 if not found
-    """
-    # Remove any spaces, dashes, or parentheses from the phone number
-    cleaned_phone = ''.join(filter(str.isdigit, phone))
-    
-    # Try to find the user with the exact phone number first
-    user = User.query.filter_by(phone=phone).first()
-    
-    # If not found, try with the cleaned phone number
-    if not user:
-        user = User.query.filter_by(phone=cleaned_phone).first()
-    
-    # If still not found, try a more flexible search
-    if not user:
-        # Try with + prefix
-        if not phone.startswith('+'):
-            user = User.query.filter_by(phone='+' + phone).first()
-        # Try without + prefix
-        elif phone.startswith('+'):
-            user = User.query.filter_by(phone=phone[1:]).first()
-    
-    if not user:
-        # Debug: Print all users' phone numbers to help diagnose the issue
-        all_users = User.query.all()
-        print("Available phone numbers in database:")
-        for u in all_users:
-            print(f"User {u.id}: {u.phone}")
-        return jsonify({"message": "User not found", "searched_phone": phone, "cleaned_phone": cleaned_phone}), 404
-        
-    return jsonify(row2dict(user)), 200
 
 

@@ -28,7 +28,17 @@ class NotificationService:
             raise ValueError("User does not exist")
         
         notifications = self.notification_repository.get_user_notifications(user_id, unread_only)
-        return [notification.to_dict() for notification in notifications]
+        notifications_with_sender = []
+        
+        for notification in notifications:
+            notification_dict = notification.to_dict()
+            # Get sender's information
+            sender = self.user_repository.get_user_by_id(notification.sender_id)
+            if sender:
+                notification_dict['sender_name'] = sender.username
+            notifications_with_sender.append(notification_dict)
+            
+        return notifications_with_sender
 
     def mark_notification_as_read(self, notification_id, user_id):
         """Mark a notification as read"""
