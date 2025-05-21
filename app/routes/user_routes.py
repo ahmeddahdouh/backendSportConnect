@@ -14,6 +14,7 @@ import uuid
 from app.controllers import row2dict
 
 from ..associations.user_sports import UserSports
+from ..controllers import row2dict
 from ..models import Sport
 
 auth_bp = Blueprint("auth", __name__)

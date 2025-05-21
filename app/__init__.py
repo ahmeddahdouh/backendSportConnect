@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager
 from app.controllers.team_routes import team_bp
 from app.routes.user_routes import auth_bp
@@ -20,15 +20,15 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
 def create_app(testing=False):
     app = Flask(__name__)
-    
+
     @app.route('/')
     def index():
         return jsonify({"message": "Welcome to SportConnect API!"})
-    
+
     @app.route('/test')
     def test_route():
         return jsonify({"message": "Test route works!"})
-    
+
     if not testing:
         # Create upload directories if they don't exist with proper permissions
         try:
@@ -37,8 +37,8 @@ def create_app(testing=False):
         except Exception as e:
             app.logger.error(f"Failed to create upload directories: {e}")
             raise RuntimeError("Failed to create required upload directories")
-        
-        # application des cors
+
+        # Configuration CORS avancée de la branche dev
         CORS(app, resources={
             r"/*": {
                 "origins": ["http://localhost:3000"],
@@ -47,11 +47,15 @@ def create_app(testing=False):
                 "expose_headers": ["Content-Type", "Authorization"],
                 "supports_credentials": True,
                 "max_age": 3600
+                "vary_header": True
             }
         })
 
         @app.after_request
         def after_request(response):
+
+            # Utilisez la valeur de l'origine de la requête pour une meilleure flexibilité
+            response.headers.add('Access-Control-Allow-Origin', request.headers.get('Origin', '*'))
             response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
             response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
             response.headers.add('Access-Control-Allow-Credentials', 'true')
@@ -60,13 +64,34 @@ def create_app(testing=False):
 
         app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
         app.config["TEAM_PHOTOS_FOLDER"] = TEAM_PHOTOS_FOLDER
-        # declaration de
+
+        # Configuration Swagger de la branche implémentation-des-test-unit-integ
+        app.config['SWAGGER'] = {
+            'title': 'JWT API',
+            'uiversion': 3,
+            'securityDefinitions': {
+                'Bearer': {
+                    'type': 'apiKey',
+                    'name': 'Authorization',
+                    'in': 'header',
+                    'description': 'Enter your JWT token like this: Bearer <your-token>'
+                }
+            },
+            'security': [{'Bearer': []}]
+        }
+
         swagger = Swagger(app)
         JWTManager(app)
+
+        app.config["SQLALCHEMY_DATABASE_URI"] = Config.SQLALCHEMY_DATABASE_URI
+        app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+        app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
         app.config.from_object(Config)
+
         db.init_app(app)
         with app.app_context():
             db.create_all()
+
         app.register_blueprint(auth_bp, url_prefix="/auth")
         app.register_blueprint(event_bp, url_prefix="/event")
         app.register_blueprint(sport_bp, url_prefix="/sport")
