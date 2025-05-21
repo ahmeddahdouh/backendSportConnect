@@ -1,0 +1,88 @@
+---
+parameters:
+  - in: path
+    name: user_id
+    required: true
+    description: L'ID de l'utilisateur à mettre à jour.
+    schema:
+      type: integer
+      example: 1
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required:
+        - firstname
+        - familyname
+        - city
+        - phone
+        - email
+      properties:
+        username:
+          type: string
+          example: "updated_user"
+        email:
+          type: string
+          example: "updated_user@example.com"
+        password:
+          type: string
+          format: password
+          example: "newpassword123"
+        firstname:
+          type: string
+          example: "Jane"
+        familyname:
+          type: string
+          example: "Doe"
+        address:
+          type: string
+          example: "456 Rue de Lyon"
+        postal_code:
+          type: string
+          example: "69001"
+        city:
+          type: string
+          example: "Lyon"
+        latitude:
+          type: number
+          format: float
+          example: 45.75
+        longitude:
+          type: number
+          format: float
+          example: 4.85
+        phone:
+          type: string
+          example: "+33678901234"
+        date_of_birth:
+          type: string
+          format: date
+          example: "1985-03-15"
+        bibliography:
+          type: string
+          example: "Expert in data science and AI."
+        interests:
+          type: array
+          items:
+            type: string
+          example: ["Sports", "Cooking", "Art"]
+responses:
+  '200':
+    description: Utilisateur mis à jour avec succès.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "Utilisateur mis à jour avec succès."
+  '400':
+    description: Données manquantes ou invalides.
+  '404':
+    description: Utilisateur non trouvé.
+  '409':
+    description: Conflit de données (par exemple, email déjà existant).
+  '500':
+    description: Erreur serveur interne.
