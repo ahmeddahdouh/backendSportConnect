@@ -94,3 +94,13 @@ class EventRepository:
 
     def get_all_events(self):
         return Event.query.all()
+    
+
+    def get_events_by_sport(self, sport):
+        return Event.query.filter_by(event_name=sport).all()
+    
+
+    def get_events_description_by_sport(self, sport_name):
+        search_pattern = f"%{sport_name}%"
+        events = Event.query.filter(Event.event_name.ilike(search_pattern)).all()
+        return [event.event_description for event in events]

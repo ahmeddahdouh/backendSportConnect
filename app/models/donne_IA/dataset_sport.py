@@ -301,4 +301,6 @@ data = [
     {"question": "parle moi de cricket", "answer": "Le cricket est un sport d'équipe joué entre deux équipes de onze joueurs."}
 ]
 
+sport_list = ['football', 'tennis', 'basketball', 'rugby', 'natation', 'cyclisme', 'athlétisme', 'handball', 'volley', 'golf']
+
 
