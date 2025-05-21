@@ -27,7 +27,13 @@ def create_app(testing=False):
     def test_route():
         return jsonify({"message": "Test route works!"})
     
-    if not testing:
+    if testing:
+        app.config['TESTING'] = True
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        app.config['JWT_SECRET_KEY'] = 'test_secret_key'
+        db.init_app(app)
+    else:
         # Create upload directories if they don't exist with proper permissions
         try:
             os.makedirs(UPLOAD_FOLDER, mode=0o755, exist_ok=True)
@@ -78,7 +84,7 @@ def create_app(testing=False):
         swagger = Swagger(app)
         JWTManager(app)
         
-        app.config["SQLALCHEMY_DATABASE_URI"] = Config.DATABASE_URL
+        app.config["SQLALCHEMY_DATABASE_URI"] = Config.SQLALCHEMY_DATABASE_URI
         app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
         app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
         app.config.from_object(Config)

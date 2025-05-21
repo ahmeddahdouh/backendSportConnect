@@ -76,9 +76,9 @@ class EventRepository:
     def update_event(self):
         try:
             db.session.commit()
-        except IntegrityError as e :
+        except IntegrityError as e:
             db.session.rollback()
-            raise IntegrityError(f'{e.orig if e.orig else e}')
+            raise IntegrityError(str(e.orig) if e.orig else str(e))
         except Exception as e:
             db.session.rollback()
             raise e
