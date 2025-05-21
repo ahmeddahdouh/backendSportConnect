@@ -3,18 +3,25 @@ version: '3.8'
 services:
   web:
     build: .
-    image: my-flask-app
-    container_name: flask-app
+    image: sportconnect-backend
+    container_name: sportconnect-backend
     environment:
+      FLASK_ENV: development
+      FLASK_DEBUG: "true"
+      PORT: 5000
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-admin}
       DB_NAME: ${DB_NAME:-sportConnectBack}
       DB_PORT: "5432"
       DB_HOST: db
-      SECRET_KEY: ${SECRET_KEY}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      SECRET_KEY: ${SECRET_KEY:-dev_secret_key}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev_jwt_secret}
+      UPLOAD_FOLDER: /app/uploads
+      TEAM_PHOTOS_FOLDER: /app/uploads/team_photos
     ports:
       - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5000/sport/ || exit 1"]
       interval: 10s
@@ -31,7 +38,7 @@ services:
 
   db:
     image: postgres:13
-    container_name: postgres-db
+    container_name: sportconnect-db
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-admin}
@@ -44,7 +51,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"  # Exposé pour les tests CI
+      - "5432:5432"
 
 volumes:
   pgdata:

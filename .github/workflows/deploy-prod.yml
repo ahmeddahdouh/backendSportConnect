@@ -1,0 +1,259 @@
+name: Production Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE_NAME: prod-backend
+  REGION: europe-west1
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install Bandit
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        python -m pip install --upgrade pip
+        python -m pip install bandit
+
+    - name: Run Bandit security scan
+      id: bandit
+      continue-on-error: true
+      run: |
+        source venv/bin/activate
+        bandit -r . -f json -o bandit-results.json -ll -ii -x "venv/*,*/venv/*,*/site-packages/*,*/dist-packages/*"
+
+    - name: Convert to SARIF format
+      run: |
+        cat > sarif-results.json << EOF
+        {
+          "version": "2.1.0",
+          "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+          "runs": [
+            {
+              "tool": {
+                "driver": {
+                  "name": "Bandit",
+                  "version": "1.8.3",
+                  "informationUri": "https://bandit.readthedocs.io/"
+                }
+              },
+              "results": []
+            }
+          ]
+        }
+        EOF
+
+        if [ -f bandit-results.json ]; then
+          jq -r '.results[] | {
+            "ruleId": "BANDIT-\(.test_id)",
+            "level": (if .issue_severity == "HIGH" then "error" elif .issue_severity == "MEDIUM" then "warning" else "note" end),
+            "message": {
+              "text": .issue_text
+            },
+            "locations": [
+              {
+                "physicalLocation": {
+                  "artifactLocation": {
+                    "uri": .filename
+                  },
+                  "region": {
+                    "startLine": .line_number
+                  }
+                }
+              }
+            ]
+          }' bandit-results.json | jq -s '{
+            "version": "2.1.0",
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "runs": [{
+              "tool": {
+                "driver": {
+                  "name": "Bandit",
+                  "version": "1.8.3",
+                  "informationUri": "https://bandit.readthedocs.io/"
+                }
+              },
+              "results": .
+            }]
+          }' > sarif-results.json
+        fi
+
+    # - name: Upload security scan results
+    #   uses: github/codeql-action/upload-sarif@v3
+    #   with:
+    #     sarif_file: sarif-results.json
+
+  build:
+    name: Build
+    needs: security-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Install Cloud SQL Auth proxy
+        run: |
+          wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.1/cloud-sql-proxy.linux.amd64 -O cloud-sql-proxy
+          chmod +x cloud-sql-proxy
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker europe-west1-docker.pkg.dev
+
+      - name: Build and Push Container
+        run: |
+          docker build -t europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/prod-backend/backend:${{ github.sha }} .
+          docker push europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/prod-backend/backend:${{ github.sha }}
+          docker tag europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/prod-backend/backend:${{ github.sha }} europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/prod-backend/backend:latest
+          docker push europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/prod-backend/backend:latest
+
+  test:
+    name: Run Tests and Quality Checks
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov flake8 black mypy
+
+    - name: Run linting
+      run: |
+        source venv/bin/activate
+        flake8 . --exclude=venv --max-line-length=120 --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --exclude=venv --max-line-length=120 --count --exit-zero --statistics
+
+    - name: Run tests with coverage
+      run: |
+        source venv/bin/activate
+        python -m pytest --cov=. --cov-report=term-missing
+
+  deploy:
+    name: Deploy
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Install Cloud SQL Auth proxy
+        run: |
+          wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.1/cloud-sql-proxy.linux.amd64 -O cloud-sql-proxy
+          chmod +x cloud-sql-proxy
+
+      - name: Run Database Migrations
+        run: |
+          # Install dependencies
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+          # Start Cloud SQL Auth proxy in the background
+          ./cloud-sql-proxy ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:${{ secrets.DB_INSTANCE }} &
+          
+          # Wait for the proxy to be ready
+          for i in {1..30}; do
+            if nc -z localhost 5432; then
+              echo "Cloud SQL Auth proxy is ready"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Cloud SQL Auth proxy failed to start"
+              exit 1
+            fi
+            echo "Waiting for Cloud SQL Auth proxy to start... ($i/30)"
+            sleep 1
+          done
+          
+          # Run migrations using localhost connection
+          export DATABASE_URL="postgresql+psycopg2://postgres:${{ secrets.DB_PASSWORD }}@localhost:5432/database-prod"
+          alembic upgrade head
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v1
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          image: europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/prod-backend/backend:${{ github.sha }}
+          region: ${{ env.REGION }}
+          flags: '--platform managed --allow-unauthenticated --add-cloudsql-instances ${{ secrets.DB_INSTANCE }} --service-account sportconnect-deployer@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
+          env_vars: |
+            FLASK_ENV=production
+            DATABASE_URL=${{ secrets.DB_URL_PROD }}
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+
+      - name: Verify Deployment
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 30
+          SERVICE_URL=$(gcloud run services describe prod-backend --platform managed --region europe-west1 --format 'value(status.url)')
+          
+          for i in {1..3}; do
+            echo "Attempt $i to verify deployment..."
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $SERVICE_URL/sport/)
+            
+            if [ "$HTTP_CODE" -eq 200 ]; then
+              echo "Deployment verified successfully! Service returned 200 OK"
+              exit 0
+            else
+              echo "Service returned HTTP code $HTTP_CODE"
+              if [ $i -lt 3 ]; then
+                echo "Waiting before next attempt..."
+                sleep 30
+              fi
+            fi
+          done
+          
+          echo "Deployment verification failed after 3 attempts"
+          exit 1
