@@ -12,6 +12,7 @@ from flask_cors import CORS
 from app.controllers.admin_event_controller import admin_event_bp
 from app.controllers.admin_user_controller import admin_user_bp 
 from app.controllers.admin_controller import admin_admin_bp
+from app.controllers.ia_contoller import ia_bp
 
 
 DB_USER = os.getenv("DB_USER")
@@ -53,7 +54,8 @@ def create_app():
     app.register_blueprint(admin_event_bp)
     app.register_blueprint(admin_user_bp)
     app.register_blueprint(admin_admin_bp)
-
-
+    
+    #IA
+    app.register_blueprint(ia_bp)
 
     return app
